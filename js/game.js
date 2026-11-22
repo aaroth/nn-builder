@@ -15,7 +15,8 @@ window.NL = window.NL || {};
   const ALL = new URLSearchParams(location.search).has('all'); // ?all opens every level, for testing
   const TOL = 1e-3;
   const MAX_STEPS = 30000;
-  const SPEEDS = [['slow', 'Slow', { every: 600 }], ['medium', 'Medium', { per: 1 }], ['fast', 'Fast', { per: 20 }], ['turbo', 'Turbo', { per: 200 }]];
+  const SPEEDS = [['slow', 'Slow', { every: 600 }], ['medium', 'Medium', { per: 1 }], ['fast', 'Fast', { per: 20 }], ['turbo', 'Turbo', { per: 200, budget: 12 }]];
+  // Turbo does up to 200 steps a frame, but stops after 12 ms so big networks still animate smoothly.
   // One colour per weight or bias, used for its dot on the diagram and its line on the chart.
   const PALETTE = ['#ffd166', '#ff6b9a', '#7ee081', '#c792ea', '#5eead4', '#ff8a65', '#a5b4fc', '#e2c08d',
     '#f9a8d4', '#c5e478', '#67e8f9', '#fca5a5', '#d4d4d8', '#fde047', '#86efac', '#fdba74', '#93c5fd'];
@@ -34,7 +35,7 @@ window.NL = window.NL || {};
         hidden: Array.isArray(a.hidden) ? a.hidden.slice(0, 2).map(n => Math.max(1, Math.min(6, n | 0))) : [],
         act: ['sigmoid', 'tanh', 'relu'].indexOf(a.act) >= 0 ? a.act : 'tanh',
       };
-      save = { done: s.done || {}, params: s.params || {}, hints: s.hints || {}, lab };
+      save = { done: s.done || {}, params: s.params || {}, hints: s.hints || {}, lab, tip1: !!s.tip1 };
     }
   } catch (e) { /* start fresh */ }
   function store() {
@@ -67,6 +68,7 @@ window.NL = window.NL || {};
   function closeModals() {
     $('#win').hidden = true;
     $('#quiz').hidden = true;
+    $('#gloss').hidden = true;
   }
 
   // ---------- the map ----------
@@ -77,10 +79,15 @@ window.NL = window.NL || {};
     $('#map').hidden = false;
     const done = LEVELS.filter(l => isDone(l.id)).length;
     $('#progress').textContent = done ? `${done} of ${LEVELS.length} levels complete` : '';
+    // Continue: the first open level not yet finished, or the Lab once everything is done.
+    const next = LEVELS.find(l => isOpen(l.id) && !isDone(l.id)) || LEVELS.find(l => l.mode === 'lab');
+    $('#continue').href = '#/level/' + next.id;
+    $('#continue').textContent = (done ? 'Continue: ' : 'Start: ') + (next.mode === 'lab' ? 'The Lab' : `Level ${next.id} · ${next.title}`) + ' →';
     $('#chapters').innerHTML = CHAPTERS.map(ch => {
-      const lvs = LEVELS.filter(l => l.chapter === ch.id);
+      const lvs = LEVELS.filter(l => l.chapter === ch.id), n = lvs.filter(l => isDone(l.id)).length;
+      const prog = lvs.length && lvs[0].mode !== 'lab' ? `<span class="chprog">${n} of ${lvs.length}</span>` : '';
       return `<section class="chapter${lvs.length ? '' : ' later'}">
-        <h2><span class="chn">Chapter ${ch.id}</span> ${ch.title}</h2><p>${ch.blurb}</p>
+        <h2><span class="chn">Chapter ${ch.id}</span> ${ch.title} ${prog}</h2><p>${ch.blurb}</p>
         <div class="tiles">${lvs.length ? lvs.map(tile).join('') : '<div class="soon">Coming soon</div>'}</div></section>`;
     }).join('');
     document.title = 'NN Builder';
@@ -112,7 +119,7 @@ window.NL = window.NL || {};
       story: `<p>Welcome to the Lab! Pick a task, design a network for it, and train it. Each task has a star to earn.</p>
         <p>Then try to beat your record: earn the star again in fewer training steps.</p>`,
       ideaBox: `<h4>Task: ${t.title}</h4><p>${t.about}</p>` +
-        `<p class="small">${t.out === 'linear' ? 'The answer is a number, so the output neuron is linear: it gives back its sum.' : 'The answer is yes (1) or no (0), so the output neuron is a sigmoid.'}</p>` +
+        `<p class="small">${t.out === 'linear' ? 'The answer is a number, so the output neuron has no activation (it is called <i>linear</i>): it just gives back its sum.' : 'The answer is yes (1) or no (0), so the output neuron is a sigmoid.'}</p>` +
         `<details><summary>Which hidden activation?</summary>${NL.ACT_PICS}<p class="small">sigmoid slides from 0 to 1. tanh slides from −1 to 1. relu gives 0 until its sum goes above 0, then gives back the sum.</p></details>`,
       goal: `Earn the star: get every example within ${fmt(t.tol)} of the right answer.` +
         (best ? `<p class="record">★ Your record: <b>${best.steps.toLocaleString()} steps</b> with ${archText(best.arch)}.</p>` : ''),
@@ -144,6 +151,8 @@ window.NL = window.NL || {};
     $('#ideaBox').innerHTML = lv.ideaBox;
     $('#goal').innerHTML = '<h4>Goal</h4>' + lv.goal;
     $('#impossible').hidden = !lv.quiz;
+    renderDoneBits();
+    $('#editor').classList.toggle('pulse', lv.id === 1 && !save.tip1);
     const show = (id, on) => { $(id).hidden = !on; };
     show('#editor', mode === 'build' || mode === 'meter');
     show('#calc', mode === 'build' || mode === 'meter');
@@ -238,6 +247,17 @@ window.NL = window.NL || {};
   const pname = p => (p.i < 0 ? `bias ${nm(p.l + 1, p.j)}` : `${nm(p.l, p.i)}→${nm(p.l + 1, p.j)}`);
   const color = k => PALETTE[k % PALETTE.length];
 
+  // Once a level is done: what it taught stays in the briefing, and a button leads on.
+  function renderDoneBits() {
+    const lv = cur.lv, done = isDone(lv.id) && !cur.lab;
+    const next = LEVELS.find(l => l.id === lv.id + 1);
+    $('#nextBtn').hidden = !done || !next;
+    if (next) $('#nextBtn').href = '#/level/' + next.id;
+    const recap = lv.recap || (typeof lv.learned === 'function' ? lv.learned({ recordNote: '' }) : lv.learned);
+    $('#learnedBox').hidden = !done;
+    $('#learnedBox').innerHTML = done ? '<h4>What you learned</h4>' + recap : '';
+  }
+
   function renderHints() {
     const lv = cur.lv, n = Math.min(save.hints[lv.hintKey || lv.id] || 0, lv.hints.length);
     $('#hints').innerHTML = lv.hints.slice(0, n).map((h, k) => `<div class="hint"><b>Hint ${k + 1}.</b> ${h}</div>`).join('');
@@ -254,7 +274,7 @@ window.NL = window.NL || {};
       $(sel).hidden = tests.length > TABLE_MAX;
       $('#testsTip').textContent = tests.length > TABLE_MAX
         ? `${tests.length} examples: too many to list. They are the dots on the Picture.`
-        : 'Click a row to send that example through the network.';
+        : 'Click a row to send it through the network.';
       if (tests.length > TABLE_MAX) { $(sel).innerHTML = '<tbody></tbody>'; return; }
     }
     let h = '<thead><tr>' + lv.names[0].map(n => `<th>${n}</th>`).join('') +
@@ -422,7 +442,7 @@ window.NL = window.NL || {};
       key = `<div class="grad"><span>${fmt(lo)}</span><i></i><span>${fmt(hi)}</span></div>` +
         `<p>Background: ${who}'s answer for every ${lv.names[0].join(' and ')}. ` +
         (hid ? 'Rings: the examples.' : 'Dots: the right answers.') +
-        (lines ? (lines.length > 1 || L > 2 ? ` Dashed: where each first hidden neuron’s Σ = 0${at ? ` (${at})` : ''}.` : ` Dashed: where Σ = 0${at ? ` (${at})` : ''}.`) : '') + '</p>';
+        (lines ? (lines.length > 1 || L > 2 ? ` Dashed: where each neuron in the first hidden layer has Σ = 0${at ? ` (${at})` : ''}.` : ` Dashed: where Σ = 0${at ? ` (${at})` : ''}.`) : '') + '</p>';
       if (L > 2) {
         const opts = [['out', nm(L - 1, 0)]];
         for (let l = 1; l < L - 1; l++) cur.names[l].forEach((n, j) => opts.push([l + ',' + j, n]));
@@ -468,7 +488,7 @@ window.NL = window.NL || {};
       const W = net.W[l - 1][j], src = net.a[l - 1], b = net.B[l - 1][j], z = net.z[l][j], a = net.a[l][j], act = net.acts[l - 1];
       const terms = W.map((w, i) => `<span class="${cls(w)}">${fmt(w)}</span> × ${paren(src[i])}`);
       if (lv.editBias) terms.push(`<span class="${cls(b)}">${paren(b)}</span>`);
-      h = `<p class="who">Inside <b>${nm(l, j)}</b> for the selected example:</p>` +
+      h = `<p class="who">Inside <b>${nm(l, j)}</b> for the selected row:</p>` +
         `<p class="eq">Σ = ${terms.join(' + ')} = <b>${fmt(z)}</b></p>` +
         `<p class="small">(each weight × its input${lv.editBias ? ', plus the bias' : ''})</p>`;
       if (act === 'linear') h += `<p class="eq">output = Σ = <b>${fmt(a)}</b></p>`;
@@ -600,7 +620,7 @@ window.NL = window.NL || {};
       cur.msg = '60 steps and the numbers haven’t moved at all. Press Step and look at the slope.';
     }
     if (cur.hist.length > MAX_STEPS) {
-      cur.msg = `That's ${MAX_STEPS.toLocaleString()} steps! Something isn't working. Try a new random start or different settings.`;
+      cur.msg = `That's ${MAX_STEPS.toLocaleString()} steps and it still hasn't got there. Try a bigger learning rate, a new random start, or a different design.`;
       return 'stop';
     }
     return null;
@@ -633,7 +653,8 @@ window.NL = window.NL || {};
     if (!cur || !cur.running) return;
     const sp = SPEEDS.find(s => s[0] === cur.speed)[2], n = sp.per || 1;
     let stop = null;
-    for (let k = 0; k < n && !stop; k++) {
+    const t0 = performance.now();
+    for (let k = 0; k < n && !stop && !(sp.budget && performance.now() - t0 > sp.budget); k++) {
       stop = trainStep(!!sp.every);
       if (!stop && passes()) stop = 'win';
     }
@@ -715,7 +736,7 @@ window.NL = window.NL || {};
             `${parts.join(' + ')} = <b>${signed(r.blame, 4)}</b></td></tr>`;
         }
       } else {
-        h += `<tr class="sub"><td colspan="3">${who}: nudge = learning rate × ${hidden ? 'blame' : 'miss'}${lin ? '' : ' × slope'} × input` +
+        h += `<tr class="sub"><td colspan="3">${who}: nudge = learning rate × ${hidden ? 'blame' : 'miss'}${lin ? '' : ' × slope of the activation'} × input` +
           (lin ? '' : ` <span class="dim">(slope of the ${acts[r.l]} here = ${fmtn(r.slope, 3)})</span>`) + '</td></tr>';
       }
       if (hidden) {
@@ -736,6 +757,10 @@ window.NL = window.NL || {};
   // ---------- editing numbers (build and meter) ----------
   function setVal(v, commit) {
     if (!isFinite(v)) return;
+    if (commit && !save.tip1) {
+      save.tip1 = true;
+      $('#editor').classList.remove('pulse');
+    }
     setP(cur.net, cur.P[cur.sel], v);
     if (!commit) update();
     else if (cur.mode === 'meter') meterCommit();
@@ -767,12 +792,20 @@ window.NL = window.NL || {};
     if (cur.lab) {
       $('#goal').innerHTML = '<h4>Goal</h4>' + labLevel(cur.lv).goal;
       renderLab();
-    }
+    } else renderDoneBits();
     $('#winText').innerHTML = typeof learned === 'function' ? learned(cur) : learned;
     $('#winNext').textContent = cur.lab ? 'Try another task' : next ? 'Next level →' : 'Back to the map';
     const later = CHAPTERS.find(ch => !LEVELS.some(l => l.chapter === ch.id));
     $('#winNote').innerHTML = next || !later || cur.lab ? '' : `<p class="dim">That is everything for now. Chapter ${later.id}, ${later.title}, is coming soon!</p>`;
     $('#win').hidden = false;
+  }
+
+  function showGlossary() {
+    const reached = LEVELS.filter(l => isOpen(l.id)).reduce((m, l) => Math.max(m, l.id), 1);
+    const met = NL.GLOSSARY.filter(g => g.level <= reached), later = NL.GLOSSARY.length - met.length;
+    $('#glossList').innerHTML = met.map(g => `<dt>${g.term} <span class="lvref">level ${g.level}</span></dt><dd>${g.text}</dd>`).join('') +
+      (later ? `<p class="dim">${later} more word${later > 1 ? 's' : ''} to discover in later levels.</p>` : '');
+    $('#gloss').hidden = false;
   }
 
   function showQuiz() {
@@ -923,6 +956,9 @@ window.NL = window.NL || {};
 
     $('#impossible').addEventListener('click', showQuiz);
     $('#quizClose').addEventListener('click', () => { $('#quiz').hidden = true; });
+    $('#glossBtn').addEventListener('click', showGlossary);
+    $('#glossClose').addEventListener('click', () => { $('#gloss').hidden = true; });
+    $('#gloss').addEventListener('click', e => { if (e.target.id === 'gloss') $('#gloss').hidden = true; });
     $('#quizOpts').addEventListener('click', e => {
       const b = e.target.closest('[data-k]');
       if (!b) return;
@@ -934,14 +970,14 @@ window.NL = window.NL || {};
 
     $('#wipe').addEventListener('click', () => {
       if (!confirm('Forget all progress and start again from level 1?')) return;
-      save = { done: {}, params: {}, hints: {}, lab: freshLab() };
+      save = { done: {}, params: {}, hints: {}, lab: freshLab(), tip1: false };
       store();
       showMap();
     });
 
     document.addEventListener('keydown', e => {
       if (e.key === 'Escape') { closeModals(); return; }
-      if (!cur || !$('#win').hidden || !$('#quiz').hidden || e.target.matches('input')) return;
+      if (!cur || !$('#win').hidden || !$('#quiz').hidden || !$('#gloss').hidden || e.target.matches('input')) return;
       if (cur.mode === 'build' || cur.mode === 'meter') {
         const d = { ArrowUp: 1, ArrowRight: 1, ArrowDown: -1, ArrowLeft: -1 }[e.key];
         if (d) { e.preventDefault(); nudge(d); }

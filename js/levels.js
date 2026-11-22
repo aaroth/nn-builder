@@ -29,7 +29,7 @@ window.NL = window.NL || {};
       W: [[[0.5]]], B: [[0]],
       tests: [[[1], 2], [[3], 6], [[5], 10], [[0], 0], [[7.5], 15], [[10], 20]], tryIt: [12],
       picture: { kind: 'graph', range: [0, 10], yRange: [0, 20], xticks: [0, 5, 10], yticks: [0, 10, 20] },
-      story: `<p>Welcome to the lab! Neural networks are built from tiny calculators called <b>neurons</b>, joined by wires.</p>
+      story: `<p>Welcome to NN Builder! Neural networks are built from tiny calculators called <b>neurons</b>, joined by wires.</p>
         <p>Every wire has a number on it called its <b>weight</b>. Whatever travels along the wire gets <b>multiplied</b> by the weight.</p>`,
       ideaBox: `<h4>New idea: weight</h4><p class="formula">answer = weight × x</p>
         <p>A bigger weight makes a thicker wire.</p>
@@ -49,7 +49,7 @@ window.NL = window.NL || {};
       picture: { kind: 'graph', range: [0, 10], yRange: [0, 25], xticks: [0, 5, 10], yticks: [0, 5, 10, 15, 20, 25] },
       story: `<p>The Robo-Taxi charges <b>$3</b> as soon as you get in, plus <b>$2 for every mile</b>.</p>
         <p>A weight alone can't do this. With 0 miles, 0 × any weight is still 0, but the fare should be $3.</p>`,
-      ideaBox: `<h4>New idea: bias</h4><p>Every neuron also has a <b>bias</b>: a number it adds on, whatever comes in. The neuron works out its <b>sum</b>, written Σ:</p>
+      ideaBox: `<h4>New idea: bias</h4><p>Every neuron also has a <b>bias</b>: a number it adds on, whatever comes in. The neuron works out its <b>sum</b>, written Σ, and gives it back as its answer:</p>
         <p class="formula">Σ = weight × miles + bias</p>`,
       goal: `Make the neuron work out the fare for any number of miles.`,
       hints: ['Look at the 0-miles test first. There, only the bias counts.',
@@ -99,7 +99,7 @@ window.NL = window.NL || {};
       goal: `Build a <b>heat alarm</b>: fire when the temperature is <b>above 30 °C</b>, stay quiet when it is 30 °C or cooler.`,
       hints: ['Keep the weight at 1. What bias makes the sum exactly 0 when it is 30 °C?',
         'Watch the dashed line on the graph and slide it to 30 with the bias.'],
-      learned: `<p>The bias sets the neuron's <b>threshold</b>: how strong the input has to be before it fires.</p>
+      learned: `<p>The bias sets the neuron's <b>threshold</b>: with a bias of −30, the input has to get above 30 before the neuron fires.</p>
         <p>A firing neuron is a 1 and a quiet one is a 0, just like the wires in a computer. Next: logic gates!</p>`,
     }),
 
@@ -108,7 +108,7 @@ window.NL = window.NL || {};
       ideaBox: `<h4>New idea: one neuron draws one line</h4><p>In the Picture, the dashed line is where the neuron's sum is exactly 0. On one side it fires (blue), on the other it is quiet (orange).</p>
         <p>Changing the weights <b>turns</b> the line. Changing the bias <b>slides</b> it.</p>`,
       goal: `Make an <b>AND</b> gate: fire only when <b>both</b> inputs are 1.`,
-      hints: ['With both weights at 1, the sum before the bias is 0, 1 or 2. You want it to fire only when that is 2.',
+      hints: ['Set both weights to 1. Then the sum before the bias is 0, 1 or 2. You want it to fire only when that is 2.',
         'Try a bias of −1.5.'],
       learned: `<p>Your AND neuron's line cuts the (1, 1) corner off from the other three corners.</p>`,
     }),
@@ -136,13 +136,13 @@ window.NL = window.NL || {};
     }),
 
     gate(9, 'NAND', 'Flipping', 'NAND', (a, b) => !(a && b), [1, 1, -1.5], {
-      story: `<p>NAND is the gate you can build every other gate from. Here is an AND neuron again.</p>`,
+      story: `<p>NAND is a gate you can build every other gate from. Here is an AND neuron again.</p>`,
       ideaBox: `<h4>Flipping a neuron</h4><p>NAND means "NOT AND": it gives the opposite of AND for every input.</p>`,
       goal: `Make a <b>NAND</b> gate: fire unless <b>both</b> inputs are 1.`,
       hints: ['What happens to the sum if you flip the sign of every number in the AND neuron?',
         'Weights −1 and −1, and a bias of 1.5.'],
       learned: `<p>Flipping every number keeps the line in the same place but swaps which side fires.</p>
-        <p>Any computer can be built from NAND gates, so a big enough team of neurons can work out anything a computer can!</p>`,
+        <p>Every logic circuit can be built from NAND gates, so a big enough team of neurons can work out any logic a circuit can!</p>`,
     }),
 
     gate(10, 'XOR?', 'The XOR wall', 'XOR', (a, b) => a !== b, [1, 1, -0.5], {
@@ -160,7 +160,7 @@ window.NL = window.NL || {};
           { text: 'A step neuron can only fire for one test at a time.', reply: 'Not true: your OR neuron fired for three tests.' },
         ],
       },
-      learned: `<p>You found a famous limit! In 1969 Marvin Minsky and Seymour Papert showed that a single neuron (then called a <b>perceptron</b>) can't do XOR. For years afterwards, many scientists lost interest in neural networks.</p>
+      learned: `<p>You found a famous limit! In 1969 Marvin Minsky and Seymour Papert showed that a single step neuron like yours (called a <b>perceptron</b>) can't do XOR. For years afterwards, many scientists lost interest in neural networks.</p>
         <p>The way out: use more than one neuron.</p>`,
     }),
 
@@ -188,14 +188,15 @@ window.NL = window.NL || {};
       W: [[[0]]], B: [[0]], wRange: [-2, 8], wStep: 0.1,
       xs: [1, 2, 3, 4, 5], secrets: [2.7, 3.4, 1.6, 4.3, 3.8, 5.2], target: 0.05,
       valley: { x0: -2, x1: 8, ymax: 150 },
-      story: `<p>So far you could see the right answers, so you could work out the weight in your head. A real network can't do that. All it finds out is <b>how wrong</b> it is.</p>
-        <p>This neuron has a secret weight. The right answers are locked away, and your only clue is the <b>error meter</b>.</p>`,
-      ideaBox: `<h4>New idea: error</h4><p class="formula">error = average of<br>(guess − right answer)²</p>
+      story: `<p>So far you could see the right answers and work out the weight in your head. A real network can't work things out in its head. All it can do is try some numbers and measure <b>how wrong</b> they are.</p>
+        <p>This neuron has a secret weight and the right answers are locked away, so you are in the same spot: your only clue is the <b>error meter</b>.</p>`,
+      ideaBox: `<h4>New idea: error</h4><p class="formula">error = average of<br>(right answer − guess)²</p>
         <p>Squaring makes every miss count as positive, and makes big misses count a lot. An error of 0 means every answer is perfect.</p>
-        <p>Each time you let go of the weight, your try is plotted on <b>The Valley</b>: the weight across, the error up.</p>`,
+        <p>Each time you set a new weight (let go of the slider, or press − or +), your try is plotted on <b>The Valley</b>: the weight across, the error up.</p>`,
       goal: `Find the secret weight: get the error down to 0.`,
       hints: ['When the error gets smaller you are getting warmer, so keep going the same way.',
         'Look at the shape your dots make. Where would the bottom be?'],
+      recap: `<p>Your tries traced out a <b>valley</b>: the right weight is at the very bottom, where the error is smallest. Training a network means finding the bottom of its error valley.</p>`,
       learned: c => `<p>The secret weight was <b>${fmt(c.secret)}</b>. Your tries traced out a <b>valley</b>, and the right weight is at the very bottom, where the error is smallest.</p>
         <p>Training a neural network means finding the bottom of its error valley. Next, the computer walks downhill by itself.</p>`,
     }),
@@ -215,7 +216,7 @@ window.NL = window.NL || {};
       hints: ['Try the smallest learning rate first, then the biggest.',
         'Too small crawls, too big bounces out. You want something in between.'],
       learned: () => `<p>That's <b>gradient descent</b>, the way almost every neural network learns. Too small a learning rate wastes time; too big and the steps overshoot the bottom, and can even fly out of the valley.</p>
-        <p>Real networks have millions of weights, so their valley has millions of directions. Gradient descent still works: it nudges every weight downhill at once.</p>`,
+        <p>Real networks have millions or even billions of weights, so their valley has that many directions. Gradient descent still works: it nudges every weight downhill at once.</p>`,
     }),
 
     level({
@@ -228,8 +229,9 @@ window.NL = window.NL || {};
       story: `<p>Remember your adder? This time the computer builds it. The neuron starts with <b>random</b> weights and learns from 8 examples, one at a time.</p>
         <p>After each example it nudges every number a little in the direction that makes its answer better.</p>`,
       ideaBox: `<h4>New idea: training</h4><p class="formula">miss = right answer − guess<br>nudge = learning rate × miss × input</p>
+        <p>(The error is the average of miss².) This is level 13's downhill step, worked out for one example at a time: miss × input tells each number which way is downhill and how steep it is.</p>
         <p>An input that was bigger had more to do with the miss, so its weight gets a bigger nudge. The bias works like a weight on an input that is always 1.</p>
-        <p>Press <b>Step</b> to see one nudge worked out, or <b>▶ Train</b> to watch. Click a number on the diagram to follow its line on the chart.</p>`,
+        <p>Press <b>Step</b> to see the nudges for one example worked out, or <b>▶ Train</b> to watch. Click a number on the diagram to follow its line on the chart.</p>`,
       goal: `Train the neuron until it passes the <b>exam</b>: sums it has never seen.`,
       hints: ['Press ▶ Train and watch the chart of the numbers. Where do the lines end up?',
         'If it is slow, try a bigger learning rate. If the numbers explode, a smaller one.'],
@@ -244,19 +246,20 @@ window.NL = window.NL || {};
       tests: TT((a, b) => a && b), tol: 0.2, rates: [0.1, 0.5, 2, 5], rate: 0.5,
       picture: GATE_PIC, lines: true,
       story: `<p>Can training build a logic gate too? This neuron uses the step activation from Chapter 1. Press <b>▶ Train</b> and watch the numbers.</p>`,
-      ideaBox: `<h4>The trouble with steps</h4><p>A step is flat everywhere: nudging a weight a tiny bit doesn't change the answer at all. Its slope is 0, so every nudge is 0.</p>
+      ideaBox: `<h4>The trouble with steps</h4><p>A step is flat everywhere except the jump: nudging a weight a tiny bit doesn't change the answer at all. Its slope is 0, so every nudge is 0.</p>
         <h4>New idea: the sigmoid</h4>
         <svg class="mini" viewBox="0 0 220 70" aria-label="A step jumps from 0 to 1; a sigmoid slides smoothly">
           <path d="M10 58 H110 V12 H210" fill="none" stroke="#5b6884" stroke-width="2" stroke-dasharray="4 4"/>
           <path d="${sigmoidPath()}" fill="none" stroke="#ffd166" stroke-width="2.5"/>
           <text x="12" y="10" fill="#8a98ae" font-size="10">step (grey) and sigmoid (yellow)</text></svg>
         <p>The <b>sigmoid</b> is a smooth step: it slides from 0 up to 1 instead of jumping, so it has a slope and training can tell which way to go.</p>
-        <p class="formula">nudge = learning rate × miss<br>× slope × input</p>
+        <p class="formula">nudge = learning rate × miss<br>× slope of the activation × input</p>
+        <p>The full rule has this one more part. A linear neuron's slope is always 1, which is why you didn't see it in level 14.</p>
         <p>An answer counts as right when it is within 0.2 of the right answer.</p>`,
       goal: `Train an <b>AND</b> gate. You will need to change something first.`,
       hints: ['Press Step and read how the nudges are worked out. What is the slope of a step?',
         'Switch the activation to sigmoid, then train.'],
-      learned: () => `<p>Real networks use smooth activations so that training can feel the slope. The sigmoid answers exactly 0.5 on the dashed line, where the step would flip, and gets surer of itself the further away you go.</p>`,
+      learned: () => `<p>Real networks use activations with a slope, so that training can feel which way to go. The sigmoid answers exactly 0.5 on the dashed line, where the step would flip, and gets surer of itself the further away you go.</p>`,
     }),
 
     level({
@@ -267,12 +270,12 @@ window.NL = window.NL || {};
       picture: GATE_PIC, lines: true,
       story: `<p>In level 11 you set nine numbers by hand to make XOR. Can training find them by itself?</p>
         <p>Start with no hidden neurons, then add some.</p>`,
-      ideaBox: `<h4>New idea: passing the blame back</h4><p>The output neuron's miss is shared out to the hidden neurons along their wires: a heavier wire carries more of the blame. Each hidden neuron then nudges its own numbers the same way as before. This is called <b>backpropagation</b>.</p>
+      ideaBox: `<h4>New idea: passing the blame back</h4><p>The output neuron's miss is shared out to the hidden neurons along their wires: a wire with a bigger weight carries more of the blame, and a negative wire flips it. Each hidden neuron then nudges its own numbers the same way as before. This is called <b>backpropagation</b>.</p>
         <p>Watch the Picture: each hidden neuron's dashed line moves as it learns.</p>`,
-      goal: `Train a network that passes all four XOR tests.`,
+      goal: `Train a network that gets all four XOR examples right.`,
       hints: ['With no hidden neurons this is level 10 all over again. Add some hidden neurons.',
         'Sometimes a network gets stuck partway. Press New random start, or add another hidden neuron.',
-        'A bigger learning rate is faster here. Try 2 or 5.'],
+        'A bigger learning rate is faster here. Try 5.'],
       learned: () => `<p>The network found its own way to make XOR. Look at the hidden neurons' lines: did it find the OR and NAND trick you used, or something else?</p>
         <p>A different random start can find a different answer, and sometimes gets stuck. Extra neurons make getting stuck less likely, which is one reason real networks are so big.</p>`,
     }),
@@ -308,7 +311,7 @@ window.NL = window.NL || {};
       id: 'max', title: 'bigger of a, b', outName: 'bigger', names: ['a', 'b'], tol: 0.25, lo: 0, hi: 3,
       tests: grid([0, 1, 2, 3], (a, b) => Math.max(a, b)),
       about: 'Answer whichever of a and b is bigger. If they are the same, answer that number.',
-      hints: ['One neuron can only make a flat slope. This answer has a fold in it (look at the Picture), so you need hidden neurons.',
+      hints: ['On its own, one neuron can only make a tilted flat surface, like a ramp. This answer has a fold in it (look at the Picture), so you need hidden neurons.',
         'Try each activation. One of them is much better at this task than the others.',
         'relu answers 0 until its sum gets above 0, then follows the sum. "bigger of a and b" = b + (how much a is above b, or 0).'],
       learned: 'bigger of a and b = b + relu(a − b): a relu neuron switches on only when a is bigger than b. That is why relu is so good at this.',
@@ -344,6 +347,34 @@ window.NL = window.NL || {};
         'tanh with a learning rate of 0.3 or 1 works well.'],
       learned: 'Each hidden neuron draws one straight line, and the output neuron combines them into a fence around the middle. Look at the dashed lines in the Picture: that is how a network makes a round shape out of straight pieces.',
     }),
+  ];
+
+  // The words the game teaches, each shown once Eli has reached the level that introduces it.
+  NL.GLOSSARY = [
+    { term: 'neuron', level: 1, text: 'A tiny calculator. It multiplies each input by the weight on its wire, adds them up along with its bias, and passes the sum through its activation.' },
+    { term: 'weight', level: 1, text: 'The number on a wire. Whatever travels along the wire is multiplied by it. A thicker wire means a bigger weight.' },
+    { term: 'bias', level: 2, text: 'A number a neuron adds on, whatever comes in. It sets where the neuron starts, or how hard it is to make it fire.' },
+    { term: 'sum (Σ)', level: 2, text: 'Each weight × its input, all added up, plus the bias. Σ is the Greek letter S, for "sum".' },
+    { term: 'negative weight', level: 4, text: 'An orange wire. A bigger input on it makes the sum smaller.' },
+    { term: 'activation', level: 5, text: 'What a neuron does to its sum before passing it on. A linear neuron passes the sum on unchanged.' },
+    { term: 'step', level: 5, text: 'An activation that answers 1 (fires) when the sum is more than 0, and 0 (stays quiet) otherwise.' },
+    { term: 'threshold', level: 5, text: 'How strong the input must be before a neuron fires. The bias sets it.' },
+    { term: 'logic gate', level: 6, text: 'A tiny machine for 0s and 1s, like AND, OR, NOT, NAND and XOR. One neuron can be most gates, but not XOR.' },
+    { term: 'hidden neuron', level: 11, text: 'A neuron between the inputs and the output. A row of them is a hidden layer.' },
+    { term: 'error', level: 12, text: 'How wrong the network is: the average of (guess − right answer)² over all the examples. 0 means perfect.' },
+    { term: 'error valley', level: 12, text: 'A graph of the error for every value of a weight. Training looks for the bottom.' },
+    { term: 'slope', level: 13, text: 'How steep a graph is at one spot: how much it goes up for each step to the right. Negative means it goes down.' },
+    { term: 'learning rate', level: 13, text: 'How big each training step is. Too small is slow; too big overshoots and can explode.' },
+    { term: 'gradient descent', level: 13, text: 'Finding the bottom of the error valley by always stepping downhill. Almost every neural network learns this way.' },
+    { term: 'training', level: 14, text: 'Showing the network examples, one at a time, and nudging every number to make its answers better.' },
+    { term: 'example', level: 14, text: 'One question with its right answer, used for training.' },
+    { term: 'miss', level: 14, text: 'right answer − guess. Positive means the guess was too low.' },
+    { term: 'nudge', level: 14, text: 'The small change training makes to a number: learning rate × miss × input (× slope, for a smooth activation).' },
+    { term: 'sigmoid', level: 15, text: 'A smooth step: it slides from 0 to 1 instead of jumping, so it has a slope and can be trained.' },
+    { term: 'backpropagation', level: 16, text: 'Passing the blame for a miss backwards along the wires, so hidden neurons know how to change too.' },
+    { term: 'random start', level: 16, text: 'Training begins from random weights. A different start can end up somewhere different, or get stuck.' },
+    { term: 'tanh', level: 17, text: 'Like the sigmoid, but it slides from −1 to 1.' },
+    { term: 'relu', level: 17, text: 'Answers 0 while its sum is below 0, then gives back the sum. Its graph is a bent line.' },
   ];
 
   // Little pictures of the three hidden activations for the Lab.

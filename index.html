@@ -13,13 +13,14 @@
     <svg viewBox="0 0 32 32" aria-hidden="true"><g stroke="#3fb6ff" stroke-width="2.5"><line x1="7" y1="8" x2="25" y2="16"/><line x1="7" y1="24" x2="25" y2="16"/></g><circle cx="7" cy="8" r="5" fill="#141b29" stroke="#8a98ae" stroke-width="2"/><circle cx="7" cy="24" r="5" fill="#141b29" stroke="#8a98ae" stroke-width="2"/><circle cx="25" cy="16" r="6" fill="#ffd166"/></svg>
     NN Builder
   </a>
+  <button id="glossBtn" class="ghost glossbtn">📖 Words</button>
 </header>
 
 <main id="map" hidden>
   <section class="hero">
     <h1>Build a neural network, one neuron at a time</h1>
     <p>A neural network is a machine made of tiny calculators called <b>neurons</b>. First you'll build them yourself, setting every number by hand. Then you'll watch a network find the numbers on its own.</p>
-    <p id="progress" class="dim"></p>
+    <p class="herorow"><a id="continue" class="primary cta" href="#/level/1">Start →</a> <span id="progress" class="dim"></span></p>
   </section>
   <div id="chapters"></div>
   <p class="foot"><button id="wipe" class="link">Start over (forget all progress)</button></p>
@@ -31,13 +32,17 @@
     <span id="lvNum" class="lvnum"></span>
     <h1 id="lvTitle"></h1>
     <span id="lvIdea" class="tag"></span>
-    <button id="reset" class="ghost" title="Put every number back to how the level started">Reset numbers</button>
+    <span class="headbtns">
+      <button id="reset" class="ghost" title="Put every number back to how the level started">Reset numbers</button>
+      <a id="nextBtn" class="primary" href="#/" hidden>Next level →</a>
+    </span>
   </div>
   <div class="lvgrid">
     <aside class="brief panel">
       <div id="story"></div>
       <div id="ideaBox" class="ideabox"></div>
       <div id="goal" class="goal"></div>
+      <div id="learnedBox" class="learned" hidden></div>
       <div id="hints"></div>
       <button id="hintBtn" class="ghost">Show a hint</button>
       <button id="impossible" class="primary" hidden>🤔 I think it's impossible</button>
@@ -55,7 +60,7 @@
           <span><i class="sw neg"></i>negative weight</span>
           <span><i class="sw zero"></i>zero</span>
           <span>thicker wire = bigger weight</span>
-          <span><i class="dots"></i>moving dots: the signal for the selected test</span>
+          <span><i class="dots"></i>moving dots: the signal for the selected row</span>
         </div>
       </div>
       <div id="editor" class="panel editor">
@@ -118,12 +123,12 @@
       <div class="panel tests">
         <h3><span id="testsTitle">Tests</span> <span id="score" class="score"></span></h3>
         <div id="bar" class="bar"><i id="barFill"></i></div>
-        <table id="tests" class="tt"></table>
-        <p id="testsTip" class="tip">Click a row to send that example through the network.</p>
+        <table id="tests" class="ttab"></table>
+        <p id="testsTip" class="tip">Click a row to send it through the network.</p>
       </div>
       <div id="examPanel" class="panel tests">
         <h3>The exam <span class="score">numbers it has never seen</span></h3>
-        <table id="exam" class="tt"></table>
+        <table id="exam" class="ttab"></table>
       </div>
       <div class="panel pic">
         <h3 id="picTitle">The Picture</h3>
@@ -153,6 +158,14 @@
     <div id="quizOpts" class="opts"></div>
     <p id="quizReply" class="reply"></p>
     <div class="row"><button id="quizClose" class="ghost">Keep trying</button></div>
+  </div>
+</div>
+
+<div id="gloss" class="modal" hidden>
+  <div class="card wide">
+    <div class="big">📖 Words</div>
+    <dl id="glossList" class="gloss"></dl>
+    <div class="row"><button id="glossClose" class="ghost">Close</button></div>
   </div>
 </div>
 

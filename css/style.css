@@ -83,7 +83,9 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
 .back:hover { color: var(--text); border-color: #3d4c6d; }
 .lvnum { color: var(--gold); font-family: var(--mono); font-size: 14px; }
 .lvhead h1 { font-size: 24px; }
-#reset { margin-left: auto; font-size: 13px; padding: 6px 12px; }
+.headbtns { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+#reset { font-size: 13px; padding: 6px 12px; }
+#nextBtn { font-size: 14px; padding: 6px 14px; text-decoration: none; }
 .lvgrid {
   display: grid; grid-template-columns: 290px minmax(0, 1fr) 330px; gap: 16px; align-items: start;
   max-width: 1500px; margin: 0 auto; padding: 0 20px 28px;
@@ -175,20 +177,20 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
 .bar { height: 6px; border-radius: 3px; background: #0e1420; overflow: hidden; margin-bottom: 10px; }
 .bar i { display: block; height: 100%; width: 0; background: var(--pos); transition: width .25s, background .25s; }
 .bar i.full { background: var(--good); }
-.tt { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 14px; }
-.tt th { font: 600 11.5px "Segoe UI", system-ui, sans-serif; color: var(--dim); text-align: right; padding: 0 6px 6px; text-transform: uppercase; letter-spacing: .04em; }
-.tt td { text-align: right; padding: 5px 6px; border-top: 1px solid #1e283b; }
-.tt tbody tr { cursor: pointer; }
-.tt tbody tr:hover td { background: #1a2438; }
-.tt tr.sel td { background: #232f48; }
-.tt tr.sel td:first-child { box-shadow: inset 3px 0 0 var(--gold); }
-.tt tr.pass .ok { color: var(--good); font-weight: 700; }
-.tt tr.fail .ok { color: var(--bad); font-weight: 700; }
-.tt tr.fail .y { color: #fca5a5; }
-.tt tr.pass .y { color: #86efac; }
-.tt tr.try td { border-top: 1px dashed #33415c; }
-.tt tr.try .dim { font: 12px "Segoe UI", system-ui, sans-serif; }
-.tt input {
+.ttab { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 14px; }
+.ttab th { font: 600 11.5px "Segoe UI", system-ui, sans-serif; color: var(--dim); text-align: right; padding: 0 6px 6px; text-transform: uppercase; letter-spacing: .04em; }
+.ttab td { text-align: right; padding: 5px 6px; border-top: 1px solid #1e283b; }
+.ttab tbody tr { cursor: pointer; }
+.ttab tbody tr:hover td { background: #1a2438; }
+.ttab tr.sel td { background: #232f48; }
+.ttab tr.sel td:first-child { box-shadow: inset 3px 0 0 var(--gold); }
+.ttab tr.pass .ok { color: var(--good); font-weight: 700; }
+.ttab tr.fail .ok { color: var(--bad); font-weight: 700; }
+.ttab tr.fail .y { color: #fca5a5; }
+.ttab tr.pass .y { color: #86efac; }
+.ttab tr.try td { border-top: 1px dashed #33415c; }
+.ttab tr.try .dim { font: 12px "Segoe UI", system-ui, sans-serif; }
+.ttab input {
   width: 64px; font: 14px var(--mono); color: var(--text); background: #0e1420; border: 1px solid var(--line);
   border-radius: 6px; padding: 3px 5px; text-align: right;
 }
@@ -302,3 +304,22 @@ details summary { cursor: pointer; color: var(--pos); font-size: 13.5px; }
 .explain { max-height: 460px; overflow-y: auto; }
 .tile .stars { font-size: 13px; font-weight: 700; }
 .net .lab.small { font-size: 11px; text-anchor: start; }
+
+/* polish: continue button, glossary, recap, first-time pointer */
+.top { justify-content: space-between; }
+.glossbtn { font-size: 14px; padding: 6px 12px; }
+.herorow { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-top: 16px; }
+.cta { display: inline-block; text-decoration: none; font-size: 16px; padding: 10px 18px; border-radius: 12px; }
+.chprog { font-size: 13px; font-weight: 500; color: var(--dim); margin-left: 6px; }
+.learned { background: #14261c; border: 1px solid #23573a; border-radius: 12px; padding: 10px 14px; font-size: 14px; }
+.learned h4 { font-size: 12px; text-transform: uppercase; letter-spacing: .07em; color: var(--good); margin-bottom: 6px; }
+.learned p { margin: 0 0 .5em; }
+.card.wide { width: min(640px, 100%); max-height: calc(100vh - 32px); display: flex; flex-direction: column; }
+.gloss { margin: 0; overflow-y: auto; padding-right: 6px; }
+.gloss dt { font-weight: 700; margin-top: 10px; color: var(--gold); }
+.gloss dd { margin: 2px 0 0; color: #c4cede; }
+.lvref { font: 500 11px var(--mono); color: var(--dim); margin-left: 6px; }
+.editor.pulse { animation: glow 1.6s ease-in-out infinite; }
+.editor.pulse::before { content: "👉 Change the weight here: drag the slider or press + and −"; display: block; color: var(--gold); font-weight: 650; font-size: 14px; margin-bottom: 8px; }
+@keyframes glow { 50% { box-shadow: 0 0 0 3px #ffd16699, 0 0 24px #ffd16655; border-color: var(--gold); } }
+@media (prefers-reduced-motion: reduce) { .editor.pulse { animation: none; border-color: var(--gold); } }

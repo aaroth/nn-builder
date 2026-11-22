@@ -30,6 +30,10 @@ window.NL = window.NL || {};
     const R = l => (net.sizes[l] <= 4 ? 26 : Math.max(5, Math.min(14, gap(l) / 2 - 2)));
     svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
     let wires = '', chips = '', nodes = '';
+    // Moving dots on more than 40 wires are too busy to read and slow to draw.
+    let wireCount = 0;
+    for (let l = 0; l < L - 1; l++) wireCount += net.sizes[l] * net.sizes[l + 1];
+    const flow = o.flow && wireCount <= 40;
 
     const chip = (x, y, label, cls, pid) => {
       const on = pid >= 0, col = on && o.color ? o.color(pid) : null;
@@ -51,7 +55,7 @@ window.NL = window.NL || {};
           const pos = `x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"`;
           wires += `<line class="wire ${sign(w)}" ${pos} stroke-width="${sw}"/>`;
           const signal = w * net.a[l][i];
-          if (o.flow && signal !== 0 && isFinite(signal)) wires += `<line class="flow ${sign(signal)}" ${pos}/>`;
+          if (flow && signal !== 0 && isFinite(signal)) wires += `<line class="flow ${sign(signal)}" ${pos}/>`;
           if (showChips) {
             // Where along the wire its number sits: staggered so neighbouring numbers don't touch,
             // and away from the bias numbers when 3 or 4 wires meet at one neuron.
