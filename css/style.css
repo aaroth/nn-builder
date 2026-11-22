@@ -175,20 +175,20 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
 .bar { height: 6px; border-radius: 3px; background: #0e1420; overflow: hidden; margin-bottom: 10px; }
 .bar i { display: block; height: 100%; width: 0; background: var(--pos); transition: width .25s, background .25s; }
 .bar i.full { background: var(--good); }
-#tests { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 14px; }
-#tests th { font: 600 11.5px "Segoe UI", system-ui, sans-serif; color: var(--dim); text-align: right; padding: 0 6px 6px; text-transform: uppercase; letter-spacing: .04em; }
-#tests td { text-align: right; padding: 5px 6px; border-top: 1px solid #1e283b; }
-#tests tbody tr { cursor: pointer; }
-#tests tbody tr:hover td { background: #1a2438; }
-#tests tr.sel td { background: #232f48; }
-#tests tr.sel td:first-child { box-shadow: inset 3px 0 0 var(--gold); }
-#tests tr.pass .ok { color: var(--good); font-weight: 700; }
-#tests tr.fail .ok { color: var(--bad); font-weight: 700; }
-#tests tr.fail .y { color: #fca5a5; }
-#tests tr.pass .y { color: #86efac; }
-#tests tr.try td { border-top: 1px dashed #33415c; }
-#tests tr.try .dim { font: 12px "Segoe UI", system-ui, sans-serif; }
-#tests input {
+.tt { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 14px; }
+.tt th { font: 600 11.5px "Segoe UI", system-ui, sans-serif; color: var(--dim); text-align: right; padding: 0 6px 6px; text-transform: uppercase; letter-spacing: .04em; }
+.tt td { text-align: right; padding: 5px 6px; border-top: 1px solid #1e283b; }
+.tt tbody tr { cursor: pointer; }
+.tt tbody tr:hover td { background: #1a2438; }
+.tt tr.sel td { background: #232f48; }
+.tt tr.sel td:first-child { box-shadow: inset 3px 0 0 var(--gold); }
+.tt tr.pass .ok { color: var(--good); font-weight: 700; }
+.tt tr.fail .ok { color: var(--bad); font-weight: 700; }
+.tt tr.fail .y { color: #fca5a5; }
+.tt tr.pass .y { color: #86efac; }
+.tt tr.try td { border-top: 1px dashed #33415c; }
+.tt tr.try .dim { font: 12px "Segoe UI", system-ui, sans-serif; }
+.tt input {
   width: 64px; font: 14px var(--mono); color: var(--text); background: #0e1420; border: 1px solid var(--line);
   border-radius: 6px; padding: 3px 5px; text-align: right;
 }
@@ -206,6 +206,63 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
 .pickey .dash { width: 18px; height: 2px; background: repeating-linear-gradient(90deg, #fff 0 5px, transparent 5px 9px); }
 .grad { display: flex; align-items: center; gap: 8px; flex-basis: 100%; font-family: var(--mono); }
 .grad i { flex: 1; height: 10px; border-radius: 5px; background: linear-gradient(90deg, rgb(170, 84, 22), rgb(30, 36, 52), rgb(22, 112, 196)); }
+
+/* training and descent controls */
+.controls { display: flex; flex-direction: column; gap: 10px; }
+.trow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.lbl { font-size: 12.5px; color: var(--dim); }
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.seg button { border: 0; border-right: 1px solid var(--line); background: var(--panel2); padding: 6px 11px; font: 600 13px var(--mono); }
+.seg button:last-child { border-right: 0; }
+.seg button:hover { background: #212c43; }
+.seg button.on { background: var(--pos); color: #04131f; }
+#speeds button { font-family: "Segoe UI", system-ui, sans-serif; font-weight: 500; }
+#play { min-width: 104px; }
+.primary:disabled { opacity: .45; cursor: default; }
+#reroll { margin-left: auto; font-size: 13px; padding: 6px 12px; }
+.timeline { display: flex; align-items: center; gap: 12px; }
+.timeline .lbl { min-width: 128px; font-family: var(--mono); color: var(--text); }
+#tl { flex: 1; accent-color: var(--gold); }
+.tmsg { margin: 0; font-size: 13.5px; color: var(--dim); min-height: 0; }
+.tmsg:empty { display: none; }
+.bad { color: #fca5a5; }
+.good { color: var(--good); font-weight: 650; }
+
+/* charts */
+.charts canvas { display: block; width: 100%; }
+.errh { margin-top: 12px; }
+.histkey { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.histkey button {
+  display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--panel2);
+  border-radius: 99px; padding: 2px 10px 2px 8px; font-size: 12.5px;
+}
+.histkey button b { font-family: var(--mono); font-weight: 600; }
+.histkey button.on { border-color: #fff; background: #26324a; }
+.histkey i, .swd { display: inline-block; width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.swd { margin-right: 6px; vertical-align: -1px; }
+
+/* step explanation */
+.explain h3 { margin-bottom: 6px; }
+.explain p { margin: 0 0 6px; }
+.explain .eq { font-family: var(--mono); }
+.nudges { width: 100%; border-collapse: collapse; font-size: 13.5px; margin-top: 6px; }
+.nudges th { text-align: left; font: 600 11.5px "Segoe UI", system-ui, sans-serif; color: var(--dim); text-transform: uppercase; letter-spacing: .04em; padding: 0 8px 4px 0; }
+.nudges td { padding: 4px 8px 4px 0; border-top: 1px solid #1e283b; font-family: var(--mono); white-space: nowrap; }
+.nudges td:last-child { text-align: right; padding-right: 0; }
+.nudges tr.sub td { font: 13px "Segoe UI", system-ui, sans-serif; color: #c4cede; white-space: normal; padding-top: 8px; }
+.explain { overflow-x: auto; }
+
+/* error meter */
+.meterval { font: 700 40px/1.1 var(--mono); color: #ff8a8a; }
+.meterval.zero { color: var(--good); }
+.meternote { margin: 6px 0 0; font-size: 14px; color: var(--dim); }
+.meternote.warmer { color: #fdba74; }
+.meternote.colder { color: #93c5fd; }
+.pickey .dot.blue { background: var(--pos); }
+.pickey .dot.gold { background: var(--gold); }
+.pickey .ln.grey { background: #51627f; }
+.pickey .ln.white { background: #fff; }
+svg.mini { display: block; width: 100%; max-width: 240px; margin: 4px 0 8px; }
 
 /* modals */
 .modal { position: fixed; inset: 0; background: rgba(4, 7, 12, .72); display: grid; place-items: center; padding: 16px; z-index: 10; }

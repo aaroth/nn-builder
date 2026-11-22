@@ -73,37 +73,30 @@ window.NL = window.NL || {};
       return s / samples.length;
     }
 
-    // One step of gradient descent on the given examples.
-    train(samples, lr) {
-      const L = this.W.length, N = samples.length, dOut = ACT[this.acts[L - 1]].d;
-      const gW = this.W.map(layer => layer.map(row => row.map(() => 0)));
-      const gB = this.B.map(layer => layer.map(() => 0));
-      for (const p of samples) {
-        const y = this.forward(p.x), t = targets(p.t);
-        let delta = y.map((v, k) => (2 * (v - t[k]) / N) * dOut(this.z[L][k], v));
-        for (let l = L - 1; l >= 0; l--) {
-          const src = this.a[l], W = this.W[l];
-          for (let j = 0; j < W.length; j++) {
-            gB[l][j] += delta[j];
-            for (let i = 0; i < src.length; i++) gW[l][j][i] += delta[j] * src[i];
-          }
-          if (l > 0) {
-            const d = ACT[this.acts[l - 1]].d, prev = new Array(src.length);
-            for (let i = 0; i < src.length; i++) {
-              let s = 0;
-              for (let j = 0; j < W.length; j++) s += W[j][i] * delta[j];
-              prev[i] = s * d(this.z[l][i], src[i]);
-            }
-            delta = prev;
-          }
+    // Learn from one example: every weight gets
+    //   nudge = learning rate × blame × slope × input
+    // where an output neuron's blame is its miss (right answer − guess), a hidden neuron's
+    // blame is passed back to it along its wires (backpropagation), and the slope is how
+    // steep the neuron's activation is right now. This is gradient descent on half the
+    // squared miss. Returns what happened, so the game can show every number.
+    learn(x, t, lr) {
+      const L = this.W.length, out = this.forward(x).slice(), tt = targets(t);
+      let blame = out.map((v, k) => tt[k] - v);
+      const neurons = [];
+      for (let l = L - 1; l >= 0; l--) {
+        const d = ACT[this.acts[l]].d, src = this.a[l].slice(), W = this.W[l], B = this.B[l];
+        const slope = W.map((_, j) => d(this.z[l + 1][j], this.a[l + 1][j]));
+        const delta = blame.map((b, j) => b * slope[j]);
+        // Pass the blame back using the weights as they were before this step.
+        const back = l > 0 ? src.map((_, i) => W.reduce((s, row, j) => s + row[i] * delta[j], 0)) : null;
+        for (let j = 0; j < W.length; j++) {
+          neurons.push({ l, j, blame: blame[j], slope: slope[j], inputs: src });
+          B[j] += lr * delta[j];
+          for (let i = 0; i < src.length; i++) W[j][i] += lr * delta[j] * src[i];
         }
+        blame = back;
       }
-      for (let l = 0; l < L; l++) {
-        for (let j = 0; j < this.W[l].length; j++) {
-          this.B[l][j] -= lr * gB[l][j];
-          for (let i = 0; i < this.W[l][j].length; i++) this.W[l][j][i] -= lr * gW[l][j][i];
-        }
-      }
+      return { out, neurons };
     }
   }
 

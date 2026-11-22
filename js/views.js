@@ -1,41 +1,48 @@
-// Drawing: the network diagram (SVG) and the pictures (canvas).
+// Drawing: the network diagram (SVG) and the pictures and charts (canvas).
 // Every mark drawn here stands for a real number in the network.
 window.NL = window.NL || {};
 (function (NL) {
   'use strict';
 
-  // Numbers shown to the player: at most two decimals, no trailing zeros, a real minus sign.
-  const fmt = NL.fmt = function (v) {
+  // Numbers shown to the player: at most d decimals, no trailing zeros, a real minus sign.
+  const fmtn = NL.fmtn = function (v, d) {
     if (!isFinite(v)) return '💥';
-    let s = (Math.round(v * 100) / 100).toFixed(2).replace(/\.?0+$/, '');
-    if (s === '-0') s = '0';
+    const k = Math.pow(10, d);
+    let s = (Math.round(v * k) / k).toFixed(d);
+    if (s.indexOf('.') >= 0) s = s.replace(/\.?0+$/, '');
+    if (/^-0$/.test(s)) s = '0';
     return s.replace('-', '−');
   };
+  const fmt = NL.fmt = v => fmtn(v, 2);
   const sign = v => (v > 0 ? 'pos' : v < 0 ? 'neg' : 'zero');
 
-  // Draws the network into an <svg viewBox="0 0 640 330">.
-  // o: { name(l, j), bias, sel, pick: [l, j], pidx(l, j, i), flow }
+  // Draws the network into an SVG 640 wide; the height grows for layers of 3 or 4 neurons.
+  // o: { name(l, j), bias, sel, pick: [l, j], pidx(l, j, i), color(pid), flow }
   // Wire thickness = size of the weight, colour = its sign. Moving dots = the signal on that
   // wire for the selected example (weight × input), blue when it pushes the sum up, orange down.
   NL.drawNet = function (svg, net, o) {
-    const W = 640, H = 330, L = net.sizes.length, mx = 76;
-    const gap = l => Math.min(120, (H - 80) / net.sizes[l]);
+    const L = net.sizes.length, mx = 76, W = 640;
+    const small = Math.max.apply(null, net.sizes.filter(n => n <= 4));
+    const H = Math.max(330, (small - 1) * 110 + 110);
+    const gap = l => (net.sizes[l] <= 4 ? 110 : (H - 80) / net.sizes[l]);
     const X = l => mx + (l * (W - 2 * mx)) / (L - 1);
     const Y = (l, j) => H / 2 - 6 + (j - (net.sizes[l] - 1) / 2) * gap(l);
-    const R = l => Math.max(9, Math.min(26, gap(l) / 2 - (net.sizes[l] <= 4 ? 13 : 4)));
+    const R = l => (net.sizes[l] <= 4 ? 26 : Math.max(5, Math.min(14, gap(l) / 2 - 2)));
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
     let wires = '', chips = '', nodes = '';
 
     const chip = (x, y, label, cls, pid) => {
-      const w = Math.max(34, label.length * 7.6 + 14), h = 22;
-      const on = pid >= 0;
+      const on = pid >= 0, col = on && o.color ? o.color(pid) : null;
+      const w = Math.max(34, label.length * 7.6 + 14) + (col ? 12 : 0), h = 22;
       return `<g class="chip ${cls}${on ? ' edit' : ''}${on && pid === o.sel ? ' sel' : ''}"${on ? ` data-p="${pid}"` : ''}>` +
         `<rect x="${x - w / 2}" y="${y - h / 2}" width="${w}" height="${h}" rx="${h / 2}"/>` +
-        `<text x="${x}" y="${y + 0.5}">${label}</text></g>`;
+        (col ? `<circle cx="${x - w / 2 + 11}" cy="${y}" r="4" fill="${col}"/>` : '') +
+        `<text x="${x + (col ? 6 : 0)}" y="${y + 0.5}">${label}</text></g>`;
     };
 
     for (let l = 0; l < L - 1; l++) {
       const n = net.sizes[l], m = net.sizes[l + 1];
-      const showChips = m === 1 || (n * m <= 8 && m <= 4);
+      const showChips = m === 1 || n * m <= 4;
       for (let j = 0; j < m; j++) {
         for (let i = 0; i < n; i++) {
           const w = net.W[l][j][i];
@@ -46,7 +53,9 @@ window.NL = window.NL || {};
           const signal = w * net.a[l][i];
           if (o.flow && signal !== 0 && isFinite(signal)) wires += `<line class="flow ${sign(signal)}" ${pos}/>`;
           if (showChips) {
-            const t = n === 1 && m === 1 ? 0.5 : 0.26 + 0.2 * (i % 2);
+            // Where along the wire its number sits: staggered so neighbouring numbers don't touch,
+            // and away from the bias numbers when 3 or 4 wires meet at one neuron.
+            const t = n === 1 && m === 1 ? 0.5 : m === 1 && n > 2 ? 0.48 + 0.2 * (i % 2) : 0.26 + 0.2 * (i % 2);
             chips += chip(x1 + (x2 - x1) * t, y1 + (y2 - y1) * t, fmt(w), sign(w), o.pidx(l, j, i));
           }
         }
@@ -100,6 +109,16 @@ window.NL = window.NL || {};
     const p = bright ? BRIGHT : SOFT;
     return 'rgb(' + (v < 0.5 ? mix(p[0], p[1], v * 2) : mix(p[1], p[2], v * 2 - 1)) + ')';
   }
+  // A round step size giving about n ticks across range.
+  function niceStep(range, n) {
+    const raw = range / n, p = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / p;
+    return (f < 1.5 ? 1 : f < 3.5 ? 2 : f < 7.5 ? 5 : 10) * p;
+  }
+  function polyline(c, pts) {
+    c.beginPath();
+    pts.forEach(([x, y], i) => (i ? c.lineTo(x, y) : c.moveTo(x, y)));
+    c.stroke();
+  }
 
   // The network's answer for every pair of inputs, with the examples drawn on top as dots.
   // o: { range: [min, max], lo, hi, points: [{x, t}], hollow, lines: [[w1, w2, bias]], ticks, names }
@@ -124,16 +143,13 @@ window.NL = window.NL || {};
       c.setLineDash([5, 4]);
       for (const [w1, w2, b0] of o.lines) {
         if (!w1 && !w2) continue;
+        if (!isFinite(w1 + w2 + b0)) continue;
         const lo = x0 - span, hi = x1 + span;
-        c.beginPath();
         if (Math.abs(w2) >= Math.abs(w1)) {
-          c.moveTo(px(lo), py(-(w1 * lo + b0) / w2));
-          c.lineTo(px(hi), py(-(w1 * hi + b0) / w2));
+          polyline(c, [[px(lo), py(-(w1 * lo + b0) / w2)], [px(hi), py(-(w1 * hi + b0) / w2)]]);
         } else {
-          c.moveTo(px(-(w2 * lo + b0) / w1), py(lo));
-          c.lineTo(px(-(w2 * hi + b0) / w1), py(hi));
+          polyline(c, [[px(-(w2 * lo + b0) / w1), py(lo)], [px(-(w2 * hi + b0) / w1), py(hi)]]);
         }
-        c.stroke();
       }
       c.restore();
     }
@@ -143,13 +159,12 @@ window.NL = window.NL || {};
       c.arc(px(p.x[0]), py(p.x[1]), r, 0, 7);
       if (o.hollow) {
         c.lineWidth = 2.5;
-        c.strokeStyle = '#fff';
       } else {
         c.fillStyle = heat((p.t - o.lo) / (o.hi - o.lo), true);
         c.fill();
         c.lineWidth = 1.5;
-        c.strokeStyle = '#fff';
       }
+      c.strokeStyle = '#fff';
       c.stroke();
     }
     c.fillStyle = DIM;
@@ -180,10 +195,7 @@ window.NL = window.NL || {};
     c.fillStyle = DIM;
     for (const v of o.yticks) {
       c.strokeStyle = GRID;
-      c.beginPath();
-      c.moveTo(l, py(v));
-      c.lineTo(l + w, py(v));
-      c.stroke();
+      polyline(c, [[l, py(v)], [l + w, py(v)]]);
       c.textAlign = 'right';
       c.fillText(fmt(v), l - 6, py(v) + 4);
     }
@@ -193,11 +205,7 @@ window.NL = window.NL || {};
       c.fillRect(px(v) - 0.5, t + h, 1, 4);
     }
     c.strokeStyle = LINE;
-    c.beginPath();
-    c.moveTo(l, t);
-    c.lineTo(l, t + h);
-    c.lineTo(l + w, t + h);
-    c.stroke();
+    polyline(c, [[l, t], [l, t + h], [l + w, t + h]]);
     c.textAlign = 'right';
     c.fillText(o.names[0] + ' →', l + w, t + h + 32);
     c.textAlign = 'left';
@@ -210,22 +218,17 @@ window.NL = window.NL || {};
     c.strokeStyle = 'rgba(255,255,255,.8)';
     c.lineWidth = 1.5;
     c.setLineDash([5, 4]);
-    for (const m of o.marks || []) {
-      c.beginPath();
-      c.moveTo(px(m), t - 6);
-      c.lineTo(px(m), t + h + 6);
-      c.stroke();
-    }
+    for (const m of o.marks || []) polyline(c, [[px(m), t - 6], [px(m), t + h + 6]]);
     c.setLineDash([]);
     c.strokeStyle = '#ffd166';
     c.lineWidth = 2.5;
     c.lineJoin = 'round';
-    c.beginPath();
+    const pts = [];
     for (let i = 0; i <= 280; i++) {
       const v = x0 + (i / 280) * (x1 - x0), y = Math.max(y0 - 1e3, Math.min(y1 + 1e3, f(v)));
-      if (i) c.lineTo(px(v), py(y)); else c.moveTo(px(v), py(y));
+      pts.push([px(v), py(y)]);
     }
-    c.stroke();
+    polyline(c, pts);
     c.fillStyle = '#fff';
     c.strokeStyle = '#0c111b';
     c.lineWidth = 2;
@@ -238,32 +241,192 @@ window.NL = window.NL || {};
     c.restore();
   };
 
-  // The error after each training step (used from Chapter 3).
-  NL.drawChart = function (cv, vals) {
-    const W = 280, H = 120, c = prep(cv, W, H), l = 34, t = 10, w = W - l - 8, h = H - t - 20;
-    const ok = vals.filter(isFinite);
-    const max = Math.max(1e-6, Math.max.apply(null, ok));
-    c.strokeStyle = LINE;
+  // The error for every possible value of one weight: a valley.
+  // o: { x0, x1, ymax, f(w), curve, dots: [w], trail: [w], ball: w, slope }
+  NL.drawValley = function (cv, o) {
+    const W = 280, H = 230, c = prep(cv, W, H), l = 40, t = 20, w = W - l - 12, h = H - t - 40;
+    const px = v => l + ((v - o.x0) / (o.x1 - o.x0)) * w;
+    const py = e => t + (1 - Math.min(1.06, Math.max(-0.02, e / o.ymax))) * h;
+    c.font = FONT;
     c.lineWidth = 1;
+    c.fillStyle = DIM;
+    const ys = niceStep(o.ymax, 4);
+    for (let v = 0; v <= o.ymax + 1e-9; v += ys) {
+      c.strokeStyle = GRID;
+      polyline(c, [[l, py(v)], [l + w, py(v)]]);
+      c.textAlign = 'right';
+      c.fillText(fmt(v), l - 6, py(v) + 4);
+    }
+    c.textAlign = 'center';
+    for (let v = Math.ceil(o.x0); v <= o.x1; v += 1) {
+      c.fillText(fmt(v), px(v), t + h + 15);
+      c.fillRect(px(v) - 0.5, t + h, 1, 4);
+    }
+    c.strokeStyle = LINE;
+    polyline(c, [[l, t], [l, t + h], [l + w, t + h]]);
+    c.textAlign = 'right';
+    c.fillText('weight →', l + w, t + h + 32);
+    c.textAlign = 'left';
+    c.fillText('↑ error', 4, 12);
+    c.save();
     c.beginPath();
-    c.moveTo(l, t);
-    c.lineTo(l, t + h);
-    c.lineTo(l + w, t + h);
-    c.stroke();
-    c.strokeStyle = '#ffd166';
+    c.rect(l - 8, t - 14, w + 16, h + 15);
+    c.clip();
+    if (o.curve) {
+      c.strokeStyle = '#51627f';
+      c.lineWidth = 2.5;
+      const pts = [];
+      for (let i = 0; i <= 200; i++) {
+        const v = o.x0 + (i / 200) * (o.x1 - o.x0);
+        pts.push([px(v), py(o.f(v))]);
+      }
+      polyline(c, pts);
+    }
+    c.fillStyle = '#3fb6ff';
+    for (const v of o.dots || []) {
+      c.beginPath();
+      c.arc(px(v), py(o.f(v)), 4, 0, 7);
+      c.fill();
+    }
+    if (o.trail && o.trail.length > 1) {
+      c.strokeStyle = 'rgba(255,209,102,.6)';
+      c.lineWidth = 1.5;
+      polyline(c, o.trail.map(v => [px(v), py(o.f(v))]));
+      c.fillStyle = 'rgba(255,209,102,.7)';
+      for (const v of o.trail) {
+        c.beginPath();
+        c.arc(px(v), py(o.f(v)), 3, 0, 7);
+        c.fill();
+      }
+    }
+    if (o.slope !== undefined && isFinite(o.slope)) {
+      // The slope under the ball, drawn as a short straight line touching the valley.
+      const e = o.f(o.ball), dw = 0.9 / Math.sqrt(1 + Math.pow((o.slope * (o.x1 - o.x0)) / o.ymax / 3, 2));
+      c.strokeStyle = '#fff';
+      c.lineWidth = 2;
+      polyline(c, [[px(o.ball - dw), py(e - o.slope * dw)], [px(o.ball + dw), py(e + o.slope * dw)]]);
+    }
+    if (o.ball !== undefined && isFinite(o.ball)) {
+      c.fillStyle = '#ffd166';
+      c.strokeStyle = '#fff';
+      c.lineWidth = 1.5;
+      c.beginPath();
+      c.arc(px(o.ball), py(o.f(o.ball)) - 1, 7, 0, 7);
+      c.fill();
+      c.stroke();
+    }
+    c.restore();
+  };
+
+  // Every weight and bias over the training steps, one coloured line each.
+  // o: { n, count, get(step, k), colors, sel, cursor }
+  NL.drawHistory = function (cv, o) {
+    const W = 560, H = 190, c = prep(cv, W, H), l = 40, t = 10, w = W - l - 10, h = H - t - 30;
+    let lo = 0, hi = 0;
+    for (let i = 0; i < o.n; i += Math.max(1, Math.floor(o.n / 400))) {
+      for (let k = 0; k < o.count; k++) {
+        const v = o.get(i, k);
+        if (isFinite(v) && Math.abs(v) < 1e6) { lo = Math.min(lo, v); hi = Math.max(hi, v); }
+      }
+    }
+    for (let k = 0; k < o.count; k++) {
+      const v = o.get(o.n - 1, k);
+      if (isFinite(v) && Math.abs(v) < 1e6) { lo = Math.min(lo, v); hi = Math.max(hi, v); }
+    }
+    if (hi - lo < 1) { hi += 0.5; lo -= 0.5; }
+    const st = niceStep(hi - lo, 4);
+    lo = Math.floor(lo / st) * st;
+    hi = Math.ceil(hi / st) * st;
+    const last = o.n - 1;
+    const px = i => l + (i / Math.max(1, last)) * w, py = v => t + (1 - (v - lo) / (hi - lo)) * h;
+    c.font = FONT;
+    c.lineWidth = 1;
+    for (let v = lo; v <= hi + st / 2; v += st) {
+      c.strokeStyle = Math.abs(v) < st / 2 ? '#3a4867' : GRID;
+      polyline(c, [[l, py(v)], [l + w, py(v)]]);
+      c.fillStyle = DIM;
+      c.textAlign = 'right';
+      c.fillText(fmt(v), l - 6, py(v) + 4);
+    }
+    c.textAlign = 'right';
+    c.fillText('training steps →  ' + (o.n - 1), l + w, t + h + 22);
+    c.textAlign = 'left';
+    c.fillText('0', l, t + h + 22);
+    c.save();
+    c.beginPath();
+    c.rect(l, t - 4, w + 4, h + 8);
+    c.clip();
+    const cols = Math.min(w, o.n);
+    const order = [];
+    for (let k = 0; k < o.count; k++) if (k !== o.sel) order.push(k);
+    if (o.sel >= 0) order.push(o.sel);
+    for (const k of order) {
+      const pts = [];
+      for (let q = 0; q <= cols; q++) {
+        const i = Math.round((q / cols) * last), v = o.get(i, k);
+        pts.push([px(i), py(Math.max(lo - 1e3, Math.min(hi + 1e3, isFinite(v) ? v : hi + 1e3)))]);
+      }
+      c.globalAlpha = o.sel >= 0 && k !== o.sel ? 0.25 : 1;
+      c.strokeStyle = o.colors[k % o.colors.length];
+      c.lineWidth = k === o.sel ? 3.5 : 2;
+      c.lineJoin = 'round';
+      polyline(c, pts);
+    }
+    c.globalAlpha = 1;
+    c.restore();
+    if (o.cursor < o.n - 1) {
+      c.strokeStyle = '#fff';
+      c.setLineDash([3, 3]);
+      polyline(c, [[px(o.cursor), t], [px(o.cursor), t + h]]);
+      c.setLineDash([]);
+    }
+  };
+
+  // The error after each training step, on a scale where each line is 10 times smaller.
+  NL.drawLogChart = function (cv, vals, cursor) {
+    const W = 560, H = 130, c = prep(cv, W, H), l = 52, t = 8, w = W - l - 10, h = H - t - 24;
+    const ok = vals.filter(v => isFinite(v) && v > 0);
+    let top = ok.length ? Math.ceil(Math.log10(Math.max.apply(null, ok))) : 0;
+    let bot = ok.length ? Math.floor(Math.log10(Math.min.apply(null, ok))) : -1;
+    bot = Math.max(bot, top - 12);
+    if (top - bot < 2) bot = top - 2;
+    const every = Math.ceil((top - bot) / 6);
+    const last = vals.length - 1;
+    const px = i => l + (i / Math.max(1, last)) * w;
+    const py = v => t + ((top - Math.log10(Math.max(v, Math.pow(10, bot - 0.3)))) / (top - bot)) * h;
+    c.font = FONT;
+    c.lineWidth = 1;
+    for (let e = bot; e <= top; e++) {
+      const v = Math.pow(10, e);
+      c.strokeStyle = GRID;
+      polyline(c, [[l, py(v)], [l + w, py(v)]]);
+      if ((top - e) % every) continue;
+      c.fillStyle = DIM;
+      c.textAlign = 'right';
+      c.fillText(e >= 0 ? String(v) : fmtn(v, -e), l - 6, py(v) + 4);
+    }
+    c.textAlign = 'right';
+    c.fillText('training steps →  ' + (vals.length - 1), l + w, t + h + 18);
+    c.save();
+    c.beginPath();
+    c.rect(l, t - 4, w + 4, h + 8);
+    c.clip();
+    const cols = Math.min(w, vals.length);
+    const pts = [];
+    for (let q = 0; q <= cols; q++) {
+      const i = Math.round((q / cols) * last), v = vals[i];
+      pts.push([px(i), isFinite(v) ? py(v) : t - 10]);
+    }
+    c.strokeStyle = '#ff6b6b';
     c.lineWidth = 2;
     c.lineJoin = 'round';
-    c.beginPath();
-    ok.forEach((v, i) => {
-      const x = l + (ok.length > 1 ? i / (ok.length - 1) : 0) * w, y = t + (1 - v / max) * h;
-      if (i) c.lineTo(x, y); else c.moveTo(x, y);
-    });
-    c.stroke();
-    c.fillStyle = DIM;
-    c.font = FONT;
-    c.textAlign = 'right';
-    c.fillText(fmt(max), l - 5, t + 8);
-    c.fillText('0', l - 5, t + h + 3);
-    c.fillText('training steps →', l + w, t + h + 15);
+    polyline(c, pts);
+    c.restore();
+    if (cursor < vals.length - 1) {
+      c.strokeStyle = '#fff';
+      c.setLineDash([3, 3]);
+      polyline(c, [[px(cursor), t], [px(cursor), t + h]]);
+      c.setLineDash([]);
+    }
   };
 })(window.NL);

@@ -11,6 +11,7 @@ window.NL = window.NL || {};
     { id: 4, title: 'The Lab', blurb: 'Design your own networks and train them on any task.' },
   ];
 
+  const fmt = v => NL.fmt(v);
   const DEFAULTS = { editBias: true, wRange: [-5, 5], wStep: 0.5, bRange: [-10, 10], bStep: 0.5, lines: false };
   const level = o => Object.assign({}, DEFAULTS, o);
   // A truth table: every pair of 0/1 inputs with the right answer.
@@ -179,5 +180,111 @@ window.NL = window.NL || {};
       learned: `<p>Two lines beat one! A hidden layer lets a network combine simple ideas (OR, NAND) into harder ones (XOR). Big networks stack many hidden layers, which is what the "deep" in <b>deep learning</b> means.</p>
         <p>Setting all these numbers by hand was hard work. In Chapter 3 the network will find them by itself.</p>`,
     }),
+
+    // ---------- Chapter 3: Learning ----------
+    level({
+      id: 12, chapter: 3, mode: 'meter', title: 'Warmer, Colder', idea: 'Error',
+      sizes: [1, 1], acts: ['linear'], names: [['x'], ['answer']], editBias: false,
+      W: [[[0]]], B: [[0]], wRange: [-2, 8], wStep: 0.1,
+      xs: [1, 2, 3, 4, 5], secrets: [2.7, 3.4, 1.6, 4.3, 3.8, 5.2], target: 0.05,
+      valley: { x0: -2, x1: 8, ymax: 150 },
+      story: `<p>So far you could see the right answers, so you could work out the weight in your head. A real network can't do that. All it finds out is <b>how wrong</b> it is.</p>
+        <p>This neuron has a secret weight. The right answers are locked away, and your only clue is the <b>error meter</b>.</p>`,
+      ideaBox: `<h4>New idea: error</h4><p class="formula">error = average of<br>(guess − right answer)²</p>
+        <p>Squaring makes every miss count as positive, and makes big misses count a lot. An error of 0 means every answer is perfect.</p>
+        <p>Each time you let go of the weight, your try is plotted on <b>The Valley</b>: the weight across, the error up.</p>`,
+      goal: `Find the secret weight: get the error down to 0.`,
+      hints: ['When the error gets smaller you are getting warmer, so keep going the same way.',
+        'Look at the shape your dots make. Where would the bottom be?'],
+      learned: c => `<p>The secret weight was <b>${fmt(c.secret)}</b>. Your tries traced out a <b>valley</b>, and the right weight is at the very bottom, where the error is smallest.</p>
+        <p>Training a neural network means finding the bottom of its error valley. Next, the computer walks downhill by itself.</p>`,
+    }),
+
+    level({
+      id: 13, chapter: 3, mode: 'descent', title: 'Roll Downhill', idea: 'Gradient descent',
+      sizes: [1, 1], acts: ['linear'], names: [['x'], ['answer']], editBias: false,
+      W: [[[0]]], B: [[0]], xs: [1, 2, 3, 4, 5], secrets: [3], target: 0.01, maxSteps: 6, blowup: 400,
+      rates: [0.005, 0.01, 0.02, 0.04, 0.06, 0.08, 0.1], rate: 0.005,
+      valley: { x0: -2, x1: 8, ymax: 150 },
+      story: `<p>Now the computer looks for the bottom of the valley. It can't see the whole valley. It only knows how steep the ground is under the ball: the <b>slope</b>.</p>
+        <p>Each step, the ball moves downhill. How far it moves is set by the <b>learning rate</b>.</p>`,
+      ideaBox: `<h4>New idea: gradient descent</h4><p class="formula">new weight =<br>weight − learning rate × slope</p>
+        <p>A negative slope means downhill is to the right, so the weight goes up. Steep ground gives big steps; near the bottom the ground is flat and the steps get tiny.</p>
+        <p>The grey curve shows you the whole valley, but the computer only knows the slope under the ball (the white line).</p>`,
+      goal: `Pick a learning rate that rolls the ball to the bottom (error below 0.01) in <b>6 steps or fewer</b>.`,
+      hints: ['Try the smallest learning rate first, then the biggest.',
+        'Too small crawls, too big bounces out. You want something in between.'],
+      learned: () => `<p>That's <b>gradient descent</b>, the way almost every neural network learns. Too small a learning rate wastes time; too big and the steps overshoot the bottom, and can even fly out of the valley.</p>
+        <p>Real networks have millions of weights, so their valley has millions of directions. Gradient descent still works: it nudges every weight downhill at once.</p>`,
+    }),
+
+    level({
+      id: 14, chapter: 3, mode: 'train', title: 'Teach It to Add', idea: 'Training',
+      sizes: [2, 1], acts: ['linear'], names: [['a', 'b'], ['answer']],
+      tests: [[[1, 2], 3], [[3, 1], 4], [[0, 4], 4], [[2, 2], 4], [[4, 3], 7], [[5, 0], 5], [[1, 5], 6], [[3, 4], 7]],
+      exam: [[[12, 30], 42], [[25, 17], 42], [[100, 250], 350], [[7.5, 0.25], 7.75]],
+      tol: 0.05, rates: [0.001, 0.01, 0.03, 0.1, 0.2], rate: 0.01,
+      picture: { kind: 'heat', range: [0, 5], lo: 0, hi: 10, ticks: [0, 5] },
+      story: `<p>Remember your adder? This time the computer builds it. The neuron starts with <b>random</b> weights and learns from 8 examples, one at a time.</p>
+        <p>After each example it nudges every number a little in the direction that makes its answer better.</p>`,
+      ideaBox: `<h4>New idea: training</h4><p class="formula">miss = right answer − guess<br>nudge = learning rate × miss × input</p>
+        <p>An input that was bigger had more to do with the miss, so its weight gets a bigger nudge. The bias works like a weight on an input that is always 1.</p>
+        <p>Press <b>Step</b> to see one nudge worked out, or <b>▶ Train</b> to watch. Click a number on the diagram to follow its line on the chart.</p>`,
+      goal: `Train the neuron until it passes the <b>exam</b>: sums it has never seen.`,
+      hints: ['Press ▶ Train and watch the chart of the numbers. Where do the lines end up?',
+        'If it is slow, try a bigger learning rate. If the numbers explode, a smaller one.'],
+      learned: () => `<p>The neuron found weights very close to 1 and 1 and a bias very close to 0: the adder you built by hand in level 3. Nobody told it how adding works.</p>
+        <p>It only saw 8 small examples, yet it can add big numbers it has never seen, because it learned the rule rather than memorising the examples.</p>`,
+    }),
+
+    level({
+      id: 15, chapter: 3, mode: 'train', title: 'Smooth Step', idea: 'Sigmoid',
+      sizes: [2, 1], acts: ['step'], actChoice: ['step', 'sigmoid'], needAct: 'sigmoid',
+      names: [['a', 'b'], ['AND']], W: [[[0.3, -0.2]]], B: [[0.1]],
+      tests: TT((a, b) => a && b), tol: 0.2, rates: [0.1, 0.5, 2, 5], rate: 0.5,
+      picture: GATE_PIC, lines: true,
+      story: `<p>Can training build a logic gate too? This neuron uses the step activation from Chapter 1. Press <b>▶ Train</b> and watch the numbers.</p>`,
+      ideaBox: `<h4>The trouble with steps</h4><p>A step is flat everywhere: nudging a weight a tiny bit doesn't change the answer at all. Its slope is 0, so every nudge is 0.</p>
+        <h4>New idea: the sigmoid</h4>
+        <svg class="mini" viewBox="0 0 220 70" aria-label="A step jumps from 0 to 1; a sigmoid slides smoothly">
+          <path d="M10 58 H110 V12 H210" fill="none" stroke="#5b6884" stroke-width="2" stroke-dasharray="4 4"/>
+          <path d="${sigmoidPath()}" fill="none" stroke="#ffd166" stroke-width="2.5"/>
+          <text x="12" y="10" fill="#8a98ae" font-size="10">step (grey) and sigmoid (yellow)</text></svg>
+        <p>The <b>sigmoid</b> is a smooth step: it slides from 0 up to 1 instead of jumping, so it has a slope and training can tell which way to go.</p>
+        <p class="formula">nudge = learning rate × miss<br>× slope × input</p>
+        <p>An answer counts as right when it is within 0.2 of the right answer.</p>`,
+      goal: `Train an <b>AND</b> gate. You will need to change something first.`,
+      hints: ['Press Step and read how the nudges are worked out. What is the slope of a step?',
+        'Switch the activation to sigmoid, then train.'],
+      learned: () => `<p>Real networks use smooth activations so that training can feel the slope. The sigmoid answers exactly 0.5 on the dashed line, where the step would flip, and gets surer of itself the further away you go.</p>`,
+    }),
+
+    level({
+      id: 16, chapter: 3, mode: 'train', title: 'XOR Learns', idea: 'Backpropagation',
+      sizes: [2, 1], acts: ['sigmoid'], hiddenChoice: [0, 2, 3, 4], hidden: 0,
+      names: [['a', 'b'], ['XOR']],
+      tests: TT((a, b) => a !== b), tol: 0.2, rates: [0.5, 1, 2, 5], rate: 2,
+      picture: GATE_PIC, lines: true,
+      story: `<p>In level 11 you set nine numbers by hand to make XOR. Can training find them by itself?</p>
+        <p>Start with no hidden neurons, then add some.</p>`,
+      ideaBox: `<h4>New idea: passing the blame back</h4><p>The output neuron's miss is shared out to the hidden neurons along their wires: a heavier wire carries more of the blame. Each hidden neuron then nudges its own numbers the same way as before. This is called <b>backpropagation</b>.</p>
+        <p>Watch the Picture: each hidden neuron's dashed line moves as it learns.</p>`,
+      goal: `Train a network that passes all four XOR tests.`,
+      hints: ['With no hidden neurons this is level 10 all over again. Add some hidden neurons.',
+        'Sometimes a network gets stuck partway. Press New random start, or add another hidden neuron.',
+        'A bigger learning rate is faster here. Try 2 or 5.'],
+      learned: () => `<p>The network found its own way to make XOR. Look at the hidden neurons' lines: did it find the OR and NAND trick you used, or something else?</p>
+        <p>A different random start can find a different answer, and sometimes gets stuck. Extra neurons make getting stuck less likely, which is one reason real networks are so big.</p>`,
+    }),
   ];
+
+  // An SVG path of the sigmoid for the little picture in level 15.
+  function sigmoidPath() {
+    let d = '';
+    for (let i = 0; i <= 50; i++) {
+      const x = 10 + i * 4, y = 58 - 46 / (1 + Math.exp(-(x - 110) / 14));
+      d += (i ? ' L' : 'M') + x.toFixed(1) + ' ' + y.toFixed(1);
+    }
+    return d;
+  }
 })(window.NL);

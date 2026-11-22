@@ -54,7 +54,7 @@
           <span><i class="dots"></i>moving dots: the signal for the selected test</span>
         </div>
       </div>
-      <div class="panel editor">
+      <div id="editor" class="panel editor">
         <div id="eLabel" class="elabel"></div>
         <div class="erow">
           <button id="minus" class="round" aria-label="Smaller">−</button>
@@ -64,18 +64,65 @@
         </div>
         <p class="tip">Click any number on the diagram to choose it. The arrow keys nudge it up and down.</p>
       </div>
+
+      <div id="descent" class="panel controls">
+        <div class="trow"><span class="lbl">Learning rate</span><div id="dRates" class="seg"></div></div>
+        <div class="trow">
+          <button id="dStep" class="primary">Roll one step ↓</button>
+          <button id="dReset" class="ghost">Start over</button>
+          <span id="dCount" class="lbl"></span>
+        </div>
+      </div>
+
+      <div id="trainer" class="panel controls">
+        <div class="trow">
+          <button id="play" class="primary">▶ Train</button>
+          <button id="stepBtn" class="ghost">Step: show it 1 example</button>
+          <span class="lbl">Speed</span><div id="speeds" class="seg"></div>
+        </div>
+        <div class="trow">
+          <span class="lbl">Learning rate</span><div id="rates" class="seg"></div>
+          <button id="reroll" class="ghost">🎲 New random start</button>
+        </div>
+        <div id="choiceRow" class="trow"><span id="choiceLbl" class="lbl"></span><div id="choices" class="seg"></div></div>
+        <div class="timeline">
+          <span id="tlLabel" class="lbl"></span>
+          <input type="range" id="tl" min="0" max="0" step="1" value="0" aria-label="Rewind training">
+        </div>
+        <p id="trainMsg" class="tmsg"></p>
+      </div>
+
+      <div id="charts" class="panel charts">
+        <h3>How the numbers change <span class="score">click a line's name, or a number on the diagram, to follow it</span></h3>
+        <canvas id="hist"></canvas>
+        <div id="histKey" class="histkey"></div>
+        <h3 class="errh">Error <span id="errNow" class="score"></span></h3>
+        <canvas id="errc"></canvas>
+        <p class="tip">On the error chart each line down is 10 times smaller than the one above.</p>
+      </div>
+
       <div id="calc" class="panel calc"></div>
+      <div id="explain" class="panel explain"></div>
     </section>
 
     <aside class="side">
+      <div id="meter" class="panel meter">
+        <h3>Error meter</h3>
+        <div id="meterVal" class="meterval"></div>
+        <p id="meterNote" class="meternote"></p>
+      </div>
       <div class="panel tests">
-        <h3>Tests <span id="score" class="score"></span></h3>
-        <div class="bar"><i id="barFill"></i></div>
-        <table id="tests"></table>
-        <p class="tip">Click a row to send that test through the network.</p>
+        <h3><span id="testsTitle">Tests</span> <span id="score" class="score"></span></h3>
+        <div id="bar" class="bar"><i id="barFill"></i></div>
+        <table id="tests" class="tt"></table>
+        <p class="tip">Click a row to send that example through the network.</p>
+      </div>
+      <div id="examPanel" class="panel tests">
+        <h3>The exam <span class="score">numbers it has never seen</span></h3>
+        <table id="exam" class="tt"></table>
       </div>
       <div class="panel pic">
-        <h3>The Picture</h3>
+        <h3 id="picTitle">The Picture</h3>
         <div id="picTabs" class="pictabs"></div>
         <canvas id="pic"></canvas>
         <div id="picKey" class="pickey"></div>
