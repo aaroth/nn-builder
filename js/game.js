@@ -24,7 +24,7 @@ window.NL = window.NL || {};
   // ---------- saved progress (this computer only) ----------
   // lab: the chosen task and network design, plus a star and the fewest training steps for each task.
   const freshLab = () => ({ task: 'add', arch: { hidden: [], act: 'tanh' }, stars: {}, best: {} });
-  let save = { done: {}, params: {}, hints: {}, lab: freshLab() };
+  let save = { done: {}, params: {}, hints: {}, lab: freshLab(), digits: { mine: [] } };
   try {
     const s = JSON.parse(localStorage.getItem(KEY) || 'null');
     if (s && typeof s === 'object') {
@@ -35,7 +35,8 @@ window.NL = window.NL || {};
         hidden: Array.isArray(a.hidden) ? a.hidden.slice(0, 2).map(n => Math.max(1, Math.min(6, n | 0))) : [],
         act: ['sigmoid', 'tanh', 'relu'].indexOf(a.act) >= 0 ? a.act : 'tanh',
       };
-      save = { done: s.done || {}, params: s.params || {}, hints: s.hints || {}, lab, tip1: !!s.tip1 };
+      save = { done: s.done || {}, params: s.params || {}, hints: s.hints || {}, lab, tip1: !!s.tip1,
+        digits: s.digits && Array.isArray(s.digits.mine) ? s.digits : { mine: [] } };
     }
   } catch (e) { /* start fresh */ }
   function store() {
@@ -59,6 +60,7 @@ window.NL = window.NL || {};
   // ---------- routing ----------
   function route() {
     stopTraining();
+    NL.Digits.close();
     const m = location.hash.match(/^#\/level\/(\d+)/);
     const lv = m && LEVELS.find(l => l.id === +m[1]);
     if (lv && isOpen(lv.id)) openLevel(lv);
@@ -128,8 +130,38 @@ window.NL = window.NL || {};
   }
 
   // ---------- opening a level ----------
+  // Shows the header and briefing that every level has.
+  function fillBrief(lv, lab) {
+    $('#map').hidden = true;
+    $('#level').hidden = false;
+    $('#lvNum').textContent = lab ? 'Chapter 4' : 'Level ' + lv.id;
+    $('#lvTitle').textContent = lv.title;
+    $('#lvIdea').textContent = lv.idea;
+    $('#story').innerHTML = lv.story;
+    $('#ideaBox').innerHTML = lv.ideaBox;
+    $('#goal').innerHTML = '<h4>Goal</h4>' + lv.goal;
+    $('#impossible').hidden = !lv.quiz;
+    const digit = lv.mode === 'paint' || lv.mode === 'digits';
+    $('#mainCenter').hidden = $('#mainSide').hidden = digit;
+    $('#dCenter').hidden = $('#dSide').hidden = !digit;
+    document.title = `${lv.id}. ${lv.title} · NN Builder`;
+    window.scrollTo(0, 0);
+  }
+
+  // Chapter 5's levels have their own screens, in digits.js.
+  function openDigitLevel(lv) {
+    cur = { lv, mode: lv.mode, lab: false, sel: -1 };
+    fillBrief(lv, false);
+    $('#reset').hidden = true;
+    renderHints();
+    renderDoneBits();
+    $('#editor').classList.remove('pulse');
+    NL.Digits.open(lv, { save: () => save, store, complete });
+  }
+
   function openLevel(lv) {
     closeModals();
+    if (lv.mode === 'paint' || lv.mode === 'digits') { openDigitLevel(lv); return; }
     const lab = lv.mode === 'lab';
     if (lab) lv = labLevel(lv);
     const mode = lv.mode || 'build';
@@ -142,15 +174,7 @@ window.NL = window.NL || {};
     cur.samples = cur.tests.map(([x, t]) => ({ x, t }));
     makeNet(false);
 
-    $('#map').hidden = true;
-    $('#level').hidden = false;
-    $('#lvNum').textContent = lab ? 'Chapter 4' : 'Level ' + lv.id;
-    $('#lvTitle').textContent = lv.title;
-    $('#lvIdea').textContent = lv.idea;
-    $('#story').innerHTML = lv.story;
-    $('#ideaBox').innerHTML = lv.ideaBox;
-    $('#goal').innerHTML = '<h4>Goal</h4>' + lv.goal;
-    $('#impossible').hidden = !lv.quiz;
+    fillBrief(lv, lab);
     renderDoneBits();
     $('#editor').classList.toggle('pulse', lv.id === 1 && !save.tip1);
     const show = (id, on) => { $(id).hidden = !on; };
@@ -171,8 +195,6 @@ window.NL = window.NL || {};
     buildTable('#tests', cur.tests, true);
     if (lv.exam) buildTable('#exam', lv.exam, false);
     buildControls();
-    document.title = `${lv.id}. ${lv.title} · NN Builder`;
-    window.scrollTo(0, 0);
     update('init');
   }
 
@@ -251,7 +273,7 @@ window.NL = window.NL || {};
   function renderDoneBits() {
     const lv = cur.lv, done = isDone(lv.id) && !cur.lab;
     const next = LEVELS.find(l => l.id === lv.id + 1);
-    $('#nextBtn').hidden = !done || !next;
+    $('#nextBtn').hidden = !isDone(lv.id) || !next;
     if (next) $('#nextBtn').href = '#/level/' + next.id;
     const recap = lv.recap || (typeof lv.learned === 'function' ? lv.learned({ recordNote: '' }) : lv.learned);
     $('#learnedBox').hidden = !done;
@@ -775,6 +797,7 @@ window.NL = window.NL || {};
   function complete() {
     stopTraining();
     cur.won = true;
+    const firstTime = !isDone(cur.lv.id);
     save.done[cur.lv.id] = true;
     if (cur.lab) {
       const t = labTask(), old = save.lab.best[t.id], had = !!save.lab.stars[t.id];
@@ -792,11 +815,14 @@ window.NL = window.NL || {};
     if (cur.lab) {
       $('#goal').innerHTML = '<h4>Goal</h4>' + labLevel(cur.lv).goal;
       renderLab();
-    } else renderDoneBits();
+    }
+    renderDoneBits();
     $('#winText').innerHTML = typeof learned === 'function' ? learned(cur) : learned;
     $('#winNext').textContent = cur.lab ? 'Try another task' : next ? 'Next level →' : 'Back to the map';
     const later = CHAPTERS.find(ch => !LEVELS.some(l => l.chapter === ch.id));
-    $('#winNote').innerHTML = next || !later || cur.lab ? '' : `<p class="dim">That is everything for now. Chapter ${later.id}, ${later.title}, is coming soon!</p>`;
+    const after = LEVELS.find(l => l.id === cur.lv.id + 1);
+    if (cur.lab) $('#winNote').innerHTML = firstTime && after ? `<p class="good">Chapter ${after.chapter}, ${CHAPTERS.find(c => c.id === after.chapter).title}, is now open! Use the Next level button at the top when you're ready.</p>` : '';
+    else $('#winNote').innerHTML = next || !later ? '' : `<p class="dim">That is everything for now. Chapter ${later.id}, ${later.title}, is coming soon!</p>`;
     $('#win').hidden = false;
   }
 
@@ -970,7 +996,7 @@ window.NL = window.NL || {};
 
     $('#wipe').addEventListener('click', () => {
       if (!confirm('Forget all progress and start again from level 1?')) return;
-      save = { done: {}, params: {}, hints: {}, lab: freshLab(), tip1: false };
+      save = { done: {}, params: {}, hints: {}, lab: freshLab(), tip1: false, digits: { mine: [] } };
       store();
       showMap();
     });

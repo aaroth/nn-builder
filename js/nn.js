@@ -46,6 +46,16 @@ window.NL = window.NL || {};
       for (const layer of this.B) for (let j = 0; j < layer.length; j++) layer[j] = (rand() * 2 - 1) * scale;
     }
 
+    // Random weights scaled to how many inputs each neuron has, so big layers (like 196
+    // pixels) start with sums that are neither tiny nor huge. Biases start at 0.
+    randomizeFan(rand) {
+      this.W.forEach((layer, l) => {
+        const s = 1 / Math.sqrt(this.sizes[l]);
+        for (const row of layer) for (let i = 0; i < row.length; i++) row[i] = (rand() * 2 - 1) * s;
+        this.B[l].fill(0);
+      });
+    }
+
     forward(x) {
       const a = this.a, z = this.z;
       for (let i = 0; i < this.sizes[0]; i++) a[0][i] = x[i];

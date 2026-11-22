@@ -323,3 +323,52 @@ details summary { cursor: pointer; color: var(--pos); font-size: 13.5px; }
 .editor.pulse::before { content: "👉 Change the weight here: drag the slider or press + and −"; display: block; color: var(--gold); font-weight: 650; font-size: 14px; margin-bottom: 8px; }
 @keyframes glow { 50% { box-shadow: 0 0 0 3px #ffd16699, 0 0 24px #ffd16655; border-color: var(--gold); } }
 @media (prefers-reduced-motion: reduce) { .editor.pulse { animation: none; border-color: var(--gold); } }
+
+/* Chapter 5: digits */
+#dCenter.painting .d-only, #dSide.painting .d-only { display: none; }
+#dCenter:not(.painting) .p-only, #dSide:not(.painting) .p-only { display: none; }
+.subh { font-size: 13px; color: var(--dim); font-weight: 600; margin: 4px 0 8px; display: flex; gap: 8px; align-items: baseline; }
+.wgal { display: block; max-width: 100%; margin-bottom: 8px; }
+.paintrow { display: flex; gap: 18px; flex-wrap: wrap; align-items: flex-start; }
+.paintgrid { width: 308px; max-width: 100%; border-radius: 6px; cursor: crosshair; touch-action: none; border: 1px solid var(--line); }
+.painttools { flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.painttools .erow { width: 100%; }
+#pBias { flex: 1; accent-color: var(--gold); }
+.biasval { font-family: var(--mono); min-width: 36px; text-align: right; }
+.triple { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.triple figure { margin: 0; text-align: center; }
+.triple canvas { width: 84px; border-radius: 4px; display: block; }
+.triple figcaption { font-size: 12px; color: var(--dim); max-width: 96px; }
+.triple > span { font-size: 22px; color: var(--dim); }
+.dgal { display: flex; flex-wrap: wrap; gap: 6px; }
+.dcard { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 5px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel2); font-size: 11.5px; line-height: 1.3; min-width: 64px; }
+.dcard canvas { width: 42px; border-radius: 3px; }
+.dcard.small canvas { width: 36px; }
+.dcard.pass { border-color: #23573a; }
+.dcard.fail { border-color: #7a2f2f; }
+.dcard.sel { outline: 2px solid var(--gold); }
+.dlab { text-align: center; font-family: var(--mono); }
+.drawrow { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
+.pad { width: 196px; height: 196px; background: #0a0f18; border: 1px solid #3d4c6d; border-radius: 10px; cursor: crosshair; touch-action: none; }
+.padside { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.padside canvas { width: 70px; border-radius: 4px; }
+.bars { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; height: 96px; margin-top: 12px; }
+.bars .dbar { position: relative; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; background: #0e1420; border-radius: 4px; overflow: hidden; }
+.bars .dbar i { display: block; width: 100%; background: #51627f; }
+.bars .dbar.best i { background: var(--gold); }
+.bars .dbar b { position: absolute; top: 2px; font: 600 10px var(--mono); color: var(--dim); }
+.bars .dbar span { position: absolute; bottom: 2px; font: 700 13px var(--mono); color: #fff; text-shadow: 0 1px 2px #000; }
+.guess { margin: 8px 0; }
+.guess .big { font-size: 22px; color: var(--gold); }
+.teach { display: flex; flex-direction: column; gap: 6px; }
+.teach .seg button { padding: 5px 9px; }
+.key { display: inline-block; width: 14px; height: 3px; vertical-align: middle; border-radius: 2px; }
+.key.gold { background: #ffd166; }
+.key.lav { background: #a5b4fc; }
+.key.green { background: repeating-linear-gradient(90deg, #4ade80 0 4px, transparent 4px 7px); }
+.exrow { display: flex; gap: 12px; align-items: center; }
+.exrow canvas { width: 70px; border-radius: 4px; flex: none; }
+.nudges tr.hl td { background: #1d2a1f; }
+#exNudges { display: block; max-width: 100%; margin-top: 8px; }
+#dCenter canvas, #dSide canvas:not(.pad) { max-width: 100%; height: auto; }
+#dAcc, #dErr { width: 100% !important; }

@@ -9,6 +9,7 @@ window.NL = window.NL || {};
     { id: 2, title: 'Teamwork', blurb: 'Neurons working together in layers.' },
     { id: 3, title: 'Learning', blurb: 'The network finds its own weights, and you watch it learn.' },
     { id: 4, title: 'The Lab', blurb: 'Design your own networks and train them on any task.' },
+    { id: 5, title: 'Reading Digits', blurb: 'Teach a network to read handwritten numbers, including yours.' },
   ];
 
   const fmt = v => NL.fmt(v);
@@ -287,6 +288,52 @@ window.NL = window.NL || {};
     sizes: [2, 1], acts: ['linear'], names: [['a', 'b'], ['answer']],
   }));
 
+  // ---------- Chapter 5: reading digits (the screens are in digits.js) ----------
+  NL.LEVELS.push(
+    level({
+      id: 18, chapter: 5, mode: 'paint', title: 'Paint a Neuron', idea: 'Pixels',
+      story: `<p>To a computer, a picture is a grid of numbers. These pictures are 14 × 14 = <b>196 pixels</b>: 1 where there is ink, 0 where there isn't, and in between at the edges.</p>
+        <p>A neuron that reads a picture has 196 inputs, one for each pixel, so it has 196 weights. You can draw those weights as a picture too!</p>`,
+      ideaBox: `<h4>New idea: a weight for every pixel</h4><p class="formula">Σ = (each pixel × its weight,<br>all 196 added up) + bias</p>
+        <p>Paint <b class="pos">blue</b> where ink should make the neuron more likely to fire, and <b class="neg">orange</b> where ink should make it less likely. Ink on a blank (0) weight does nothing.</p>
+        <p>The neuron has a step activation, like in Chapter 1: it fires when Σ is more than 0.</p>`,
+      goal: `Paint the weights so the neuron <b>fires for every 1</b> and <b>stays quiet for every 0</b>.`,
+      hints: ['Click a picture of a 1 and look at where its ink is. Paint blue there.',
+        'Now click a 0. Its ink is in a ring, and the middle is empty. Paint orange on the ring.',
+        'If a 0 still fires, more orange or a negative bias will calm it down.'],
+      learned: `<p>A neuron's weights are a picture of what it is looking for, a kind of <b>template</b>. Ink that lands on blue pushes it to fire; ink on orange holds it back.</p>
+        <p>Painting 196 weights by hand was fiddly. Next, ten neurons paint their own weights by training.</p>`,
+    }),
+    level({
+      id: 19, chapter: 5, mode: 'digits', title: 'Ten Templates', idea: 'Classifying',
+      hidden: 0, rates: [0.01, 0.03, 0.1, 0.3, 1], rate: 0.1, target: 78,
+      story: `<p>Now there are <b>ten</b> output neurons, one for each digit from 0 to 9, all looking at the same picture. The network's answer is whichever neuron says the biggest number.</p>
+        <p>That is 1,960 weights, far too many to paint, so training will paint them.</p>`,
+      ideaBox: `<h4>New idea: one neuron per answer</h4><p>For a picture of a 3, the right answers are: neuron 3 should say 1, and every other neuron 0. Each step nudges all ten neurons at once.</p>
+        <p>Watch the ten weight pictures while it trains. Then draw your own digits and see what it thinks!</p>
+        <p>The <b>exam</b> is 300 pictures it never learns from, so it can only pass by learning what digits look like, not by remembering the examples.</p>`,
+      goal: 'Train it until it gets 78% of the exam right.',
+      hints: ['Press ▶ Train and watch the weight pictures. What do they start to look like?',
+        'The score climbs fast at first, then slowly. Keep training, or try a different learning rate.'],
+      learned: `<p>Each output neuron painted itself a blurry <b>template</b> of its digit: blue where that digit's ink usually goes, orange where other digits' ink goes.</p>
+        <p>But one template per digit can't fit every way of writing it, so the score stops climbing at about 80%. Look at the exam mistakes: which digits get mixed up?</p>`,
+    }),
+    level({
+      id: 20, chapter: 5, mode: 'digits', title: 'Hidden Helpers', idea: 'Features',
+      hidden: 16, hiddenChoice: [4, 8, 16, 32], rates: [0.03, 0.1, 0.3, 1, 3], rate: 0.3, target: 84,
+      story: `<p>Add a layer of hidden neurons between the pixels and the ten answers. Each hidden neuron learns its own small pattern, and the output neurons decide by combining them.</p>`,
+      ideaBox: `<h4>New idea: features</h4><p>Hidden neurons don't learn whole digits. They tend to learn pieces, like a stroke, a curve or a gap, called <b>features</b>. An 8 might be "loop at the top" plus "loop at the bottom".</p>
+        <p>The blame for each miss is passed back from all ten output neurons to every hidden neuron, as in level 16.</p>
+        <p>Try drawing digits and teaching it the ones it gets wrong.</p>`,
+      goal: 'Train it until it gets 84% of the exam right. Ten templates alone can\'t get there.',
+      hints: ['Hidden layers need more training than level 19. Use Fast or Turbo and be patient.',
+        'Try more or fewer hidden neurons. With only 4 or 8 it usually gets stuck below the goal.',
+        'If it is stuck, a new random start or a different learning rate can help.'],
+      learned: `<p>Look at the score chart: the lavender line (pictures it learns from) climbs higher than the gold line (the exam). The network is better at pictures it has already seen. That is called <b>overfitting</b>, and it is why the exam matters.</p>
+        <p>The hidden neurons learned <b>features</b>, pieces of digits, and the output neurons recognise a digit by which pieces are there. Real image-recognition networks work the same way, with millions of neurons in many layers: early layers find edges, later layers find shapes, and the last layers find whole objects.</p>`,
+    }),
+  );
+
   const grid = (vals, f) => [].concat(...vals.map(a => vals.map(b => [[a, b], f(a, b)])));
   const NUMBER = { out: 'linear', rates: [0.003, 0.01, 0.03, 0.1, 0.3], rate: 0.01, ticks: [0, 1, 2, 3], range: [-0.5, 3.5] };
   const YESNO = { out: 'sigmoid', rates: [0.03, 0.1, 0.3, 1, 3], rate: 0.3, lo: 0, hi: 1 };
@@ -374,6 +421,12 @@ window.NL = window.NL || {};
     { term: 'backpropagation', level: 16, text: 'Passing the blame for a miss backwards along the wires, so hidden neurons know how to change too.' },
     { term: 'random start', level: 16, text: 'Training begins from random weights. A different start can end up somewhere different, or get stuck.' },
     { term: 'tanh', level: 17, text: 'Like the sigmoid, but it slides from −1 to 1.' },
+    { term: 'pixel', level: 18, text: 'One square of a picture. Here each pixel is a number from 0 (no ink) to 1 (full ink).' },
+    { term: 'template', level: 18, text: 'A neuron\'s weights drawn as a picture: what it is looking for.' },
+    { term: 'exam', level: 19, text: 'Examples the network never learns from, kept back to check whether it really learned the rule.' },
+    { term: 'classifying', level: 19, text: 'Sorting things into groups, like pictures into digits. One output neuron per group; the biggest answer wins.' },
+    { term: 'overfitting', level: 20, text: 'Getting better at the examples it learned from than at new ones: remembering instead of understanding.' },
+    { term: 'feature', level: 20, text: 'A piece of a pattern, like a stroke or a curve, that a hidden neuron learns to spot.' },
     { term: 'relu', level: 17, text: 'Answers 0 while its sum is below 0, then gives back the sum. Its graph is a bent line.' },
   ];
 
