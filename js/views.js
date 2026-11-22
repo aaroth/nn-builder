@@ -42,7 +42,7 @@ window.NL = window.NL || {};
 
     for (let l = 0; l < L - 1; l++) {
       const n = net.sizes[l], m = net.sizes[l + 1];
-      const showChips = m === 1 || n * m <= 4;
+      const showChips = (m === 1 && n <= 4) || n * m <= 4;
       for (let j = 0; j < m; j++) {
         for (let i = 0; i < n; i++) {
           const w = net.W[l][j][i];
@@ -72,11 +72,16 @@ window.NL = window.NL || {};
         const picked = o.pick && o.pick[0] === l && o.pick[1] === j;
         nodes += `<circle class="node${fire ? ' fire' : ''}${picked ? ' pick' : ''}" data-n="${l},${j}" cx="${x}" cy="${y}" r="${r}" fill="rgb(${fill})"/>`;
         const two = l && act !== 'linear' && r >= 24;
-        const txt = r >= 22 ? fmt(a) : isFinite(a) ? a.toFixed(1) : '!';
+        const txt = r >= 22 ? fmt(a) : fmtn(a, 1);
         nodes += `<text class="val" x="${x}" y="${two ? y - 5 : y + 1}" font-size="${r >= 22 ? 16 : 10}">${txt}</text>`;
         if (two) nodes += `<text class="sum" x="${x}" y="${y + 12}">Σ ${fmt(net.z[l][j])}</text>`;
         const nm = o.name(l, j);
-        if (nm) nodes += `<text class="lab" x="${x}" y="${y - r - 10}">${nm}${act && act !== 'linear' ? ' · ' + act : ''}</text>`;
+        if (nm && net.sizes[l] <= 4) nodes += `<text class="lab" x="${x}" y="${y - r - 10}">${nm}${act && act !== 'linear' ? ' · ' + act : ''}</text>`;
+        else if (nm) {
+          // Small layers: the name sits just off the node, on the side away from its wires.
+          const up = j < net.sizes[l] / 2;
+          nodes += `<text class="lab small" x="${x + r + 2}" y="${y + (up ? -r + 2 : r)}">${nm}</text>`;
+        }
         if (l && o.bias && net.sizes[l] <= 4) {
           const b = net.B[l - 1][j];
           chips += chip(x, y + r + 16, 'bias ' + fmt(b), sign(b), o.pidx(l - 1, j, -1));

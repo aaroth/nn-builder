@@ -44,6 +44,10 @@
     </aside>
 
     <section class="center">
+      <div id="labPanel" class="panel controls lab">
+        <div class="trow"><span class="lbl">Task</span><div id="labTasks" class="seg tasks"></div></div>
+        <div id="labDesign" class="controls"></div>
+      </div>
       <div class="panel netwrap">
         <svg id="net" class="net" viewBox="0 0 640 330" role="img" aria-label="The network"></svg>
         <div class="legend">
@@ -115,7 +119,7 @@
         <h3><span id="testsTitle">Tests</span> <span id="score" class="score"></span></h3>
         <div id="bar" class="bar"><i id="barFill"></i></div>
         <table id="tests" class="tt"></table>
-        <p class="tip">Click a row to send that example through the network.</p>
+        <p id="testsTip" class="tip">Click a row to send that example through the network.</p>
       </div>
       <div id="examPanel" class="panel tests">
         <h3>The exam <span class="score">numbers it has never seen</span></h3>
@@ -133,7 +137,7 @@
 
 <div id="win" class="modal" hidden>
   <div class="card">
-    <div class="big">✓ Level complete!</div>
+    <div id="winBig" class="big">✓ Level complete!</div>
     <div id="winText"></div>
     <div id="winNote"></div>
     <div class="row">

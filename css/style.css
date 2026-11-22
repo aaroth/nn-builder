@@ -280,3 +280,25 @@ svg.mini { display: block; width: 100%; max-width: 240px; margin: 4px 0 8px; }
 .opts button.right { border-color: var(--good); background: #14301f; }
 .opts button.wrong { border-color: var(--bad); background: #3a1a1a; }
 .reply { min-height: 1.5em; margin-top: 12px; }
+
+/* the Lab */
+.lab { gap: 10px; }
+.seg.tasks button { font-family: "Segoe UI", system-ui, sans-serif; font-weight: 600; }
+.seg .star, .stars { color: var(--gold); }
+.seg button.on .star { color: #1a1405; }
+.stepper { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.stepper button { border: 0; background: var(--panel2); width: 30px; height: 30px; font-size: 18px; line-height: 1; }
+.stepper button:hover:not(:disabled) { background: #212c43; }
+.stepper button:disabled { opacity: .35; cursor: default; }
+.stepper b { min-width: 26px; text-align: center; font-family: var(--mono); }
+.record { margin: 8px 0 0; font-size: 14px; color: #fde68a; }
+details { margin-top: 6px; }
+details summary { cursor: pointer; color: var(--pos); font-size: 13.5px; }
+.actpics { display: flex; gap: 6px; margin: 8px 0 4px; }
+.actpics figure { margin: 0; flex: 1; text-align: center; }
+.actpics svg { width: 100%; background: #0e1524; border-radius: 6px; }
+.actpics figcaption { font: 12px var(--mono); color: var(--dim); }
+.histkey { max-height: 92px; overflow-y: auto; }
+.explain { max-height: 460px; overflow-y: auto; }
+.tile .stars { font-size: 13px; font-weight: 700; }
+.net .lab.small { font-size: 11px; text-anchor: start; }

@@ -278,6 +278,89 @@ window.NL = window.NL || {};
     }),
   ];
 
+  // ---------- Chapter 4: the Lab ----------
+  NL.LEVELS.push(level({
+    id: 17, chapter: 4, mode: 'lab', title: 'The Lab', idea: 'Experiments',
+    sizes: [2, 1], acts: ['linear'], names: [['a', 'b'], ['answer']],
+  }));
+
+  const grid = (vals, f) => [].concat(...vals.map(a => vals.map(b => [[a, b], f(a, b)])));
+  const NUMBER = { out: 'linear', rates: [0.003, 0.01, 0.03, 0.1, 0.3], rate: 0.01, ticks: [0, 1, 2, 3], range: [-0.5, 3.5] };
+  const YESNO = { out: 'sigmoid', rates: [0.03, 0.1, 0.3, 1, 3], rate: 0.3, lo: 0, hi: 1 };
+  const circlePts = [];
+  for (let i = 0; i < 7; i++) {
+    for (let j = 0; j < 7; j++) {
+      const x = +(-1 + i / 3).toFixed(2), y = +(-1 + j / 3).toFixed(2), r = Math.hypot(x, y);
+      if (Math.abs(r - Math.sqrt(0.45)) > 0.12) circlePts.push([[x, y], r * r < 0.45 ? 1 : 0]);
+    }
+  }
+
+  // Each task: its examples, how close counts as right, and the words around it.
+  NL.LAB = [
+    Object.assign({}, NUMBER, {
+      id: 'add', title: 'a + b', outName: 'a + b', names: ['a', 'b'], tol: 0.1, lo: 0, hi: 6,
+      tests: grid([0, 1, 2, 3], (a, b) => a + b),
+      about: 'Add the two numbers.',
+      hints: ['You built this in level 3. How many neurons did it need?', 'Try no hidden layers. Simpler networks often learn faster.'],
+      learned: 'A single neuron can add, so no hidden layer is needed. Extra neurons only give training more numbers to sort out.',
+    }),
+    Object.assign({}, NUMBER, {
+      id: 'max', title: 'bigger of a, b', outName: 'bigger', names: ['a', 'b'], tol: 0.25, lo: 0, hi: 3,
+      tests: grid([0, 1, 2, 3], (a, b) => Math.max(a, b)),
+      about: 'Answer whichever of a and b is bigger. If they are the same, answer that number.',
+      hints: ['One neuron can only make a flat slope. This answer has a fold in it (look at the Picture), so you need hidden neurons.',
+        'Try each activation. One of them is much better at this task than the others.',
+        'relu answers 0 until its sum gets above 0, then follows the sum. "bigger of a and b" = b + (how much a is above b, or 0).'],
+      learned: 'bigger of a and b = b + relu(a − b): a relu neuron switches on only when a is bigger than b. That is why relu is so good at this.',
+    }),
+    Object.assign({}, NUMBER, {
+      id: 'mul', title: 'a × b', outName: 'a × b', names: ['a', 'b'], tol: 0.3, lo: 0, hi: 9,
+      tests: grid([0, 1, 2, 3], (a, b) => a * b),
+      about: 'Multiply the two numbers. Neurons can only multiply by their weights and add up, so this one is hard!',
+      hints: ['You will need a hidden layer with plenty of neurons, and patience. Turbo speed helps.',
+        'Try 6 hidden neurons with tanh or sigmoid, and a small learning rate like 0.01 or 0.03.'],
+      learned: 'No single neuron can multiply, but a team of hidden neurons can bend the Picture into a curved shape that matches a × b closely. That is the real trick of neural networks: building curves out of lots of simple pieces.',
+    }),
+    Object.assign({}, YESNO, {
+      id: 'xor', title: 'XOR', outName: 'XOR', names: ['a', 'b'], tol: 0.2, range: [-0.5, 1.5], ticks: [0, 1],
+      tests: grid([0, 1], (a, b) => (a !== b ? 1 : 0)),
+      about: 'Fire when exactly one input is 1. You know this one!',
+      hints: ['What is the smallest network that can learn it?', 'Try tanh. Does it learn faster than sigmoid?'],
+      learned: 'XOR needs at least two hidden neurons, because it needs two lines. With a few more neurons it gets stuck less often.',
+    }),
+    Object.assign({}, YESNO, {
+      id: 'gt', title: 'is a > b?', outName: 'a > b?', names: ['a', 'b'], tol: 0.2, range: [-0.5, 3.5], ticks: [0, 1, 2, 3],
+      tests: grid([0, 1, 2, 3], (a, b) => (a > b ? 1 : 0)).filter(([[a, b]]) => a !== b),
+      about: 'Answer yes (1) when a is bigger than b, and no (0) when it is smaller.',
+      hints: ['Look at the Picture. Can one straight line split the yes dots from the no dots?'],
+      learned: 'One neuron is enough: the line a = b splits the yes answers from the no answers.',
+    }),
+    Object.assign({}, YESNO, {
+      id: 'circle', title: 'inside the circle', outName: 'inside?', names: ['x', 'y'], tol: 0.3, range: [-1.2, 1.2], ticks: [-1, 0, 1],
+      tests: circlePts,
+      about: 'Answer yes (1) for the points inside the circle and no (0) for the points outside.',
+      hints: ['Each hidden neuron draws one straight line. How many lines does it take to fence in a circle?',
+        'Three lines make a triangle around the middle. Four make a square. Try 4 to 6 hidden neurons.',
+        'tanh with a learning rate of 0.3 or 1 works well.'],
+      learned: 'Each hidden neuron draws one straight line, and the output neuron combines them into a fence around the middle. Look at the dashed lines in the Picture: that is how a network makes a round shape out of straight pieces.',
+    }),
+  ];
+
+  // Little pictures of the three hidden activations for the Lab.
+  NL.ACT_PICS = (function () {
+    const fs = { sigmoid: z => 1 / (1 + Math.exp(-z)), tanh: Math.tanh, relu: z => Math.max(0, z) / 2 };
+    const pic = name => {
+      let d = '';
+      for (let i = 0; i <= 40; i++) {
+        const z = -4 + i / 5, y = 30 - fs[name](z) * 22;
+        d += (i ? ' L' : 'M') + (4 + i * 2.2).toFixed(1) + ' ' + y.toFixed(1);
+      }
+      return `<figure><svg viewBox="0 0 96 56"><line x1="4" y1="30" x2="92" y2="30" stroke="#33415c"/><line x1="48" y1="4" x2="48" y2="54" stroke="#33415c"/>` +
+        `<path d="${d}" fill="none" stroke="#ffd166" stroke-width="2.5"/></svg><figcaption>${name}</figcaption></figure>`;
+    };
+    return `<div class="actpics">${pic('sigmoid')}${pic('tanh')}${pic('relu')}</div>`;
+  })();
+
   // An SVG path of the sigmoid for the little picture in level 15.
   function sigmoidPath() {
     let d = '';
