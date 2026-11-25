@@ -292,6 +292,7 @@ NL.Digits = (function () {
       lv, mode: 'digits', H: prev ? prev.H : lv.hidden, rate: prev ? prev.rate : lv.rate, speed: prev ? prev.speed : 'fast',
       probe: null, running: false, padDirty: false,
     };
+    if (lv.sandbox) { st.rate = lv.rate; st.speed = prev ? prev.speed : 'fast'; }
     newNet();
     buildControls();
     clearPad();
@@ -303,9 +304,13 @@ NL.Digits = (function () {
     return data().train.concat(mine.filter(e => Array.isArray(e.x) && e.x.length === N));
   }
 
+  // The hidden layers: from the Sandbox's design, or level 20's one layer of st.H neurons.
+  const arch = () => (st.lv.sandbox ? st.lv.arch : { hidden: st.H ? [st.H] : [], acts: st.H ? ['sigmoid'] : [] });
+  const LAYER_LETTERS = ['h', 'k', 'm'];
+
   function newNet() {
-    const sizes = st.H ? [N, st.H, 10] : [N, 10];
-    st.net = new NL.Net(sizes, sizes.slice(1).map(() => 'sigmoid'));
+    const a = arch(), sizes = [N].concat(a.hidden, [10]);
+    st.net = new NL.Net(sizes, a.acts.concat(['sigmoid']));
     st.net.randomizeFan(NL.rng((Math.random() * 4294967296) >>> 0));
     st.step = 0;
     st.order = [];
@@ -380,6 +385,7 @@ NL.Digits = (function () {
   }
 
   function checkWin(examAcc) {
+    if (st.lv.target == null) return false; // the Sandbox has no goal
     if (!st.won && examAcc >= st.lv.target) {
       st.won = true;
       stop();
@@ -437,7 +443,7 @@ NL.Digits = (function () {
     };
     seg($('#dSpeeds'), SPEEDS.map(([v, l]) => [v, l]), st.speed);
     seg($('#dRatesT'), lv.rates.map(r => [r, fmtn(r, 3)]), st.rate);
-    $('#dHidRow').hidden = !lv.hiddenChoice;
+    $('#dHidRow').hidden = !lv.hiddenChoice || !!lv.sandbox;
     if (lv.hiddenChoice) seg($('#dHidSeg'), lv.hiddenChoice.map(h => [h, String(h)]), st.H);
     $('#teachSeg').innerHTML = Array.from({ length: 10 }, (_, d) => `<button data-v="${d}">${d}</button>`).join('');
   }
@@ -445,12 +451,13 @@ NL.Digits = (function () {
   function digitsRender() {
     const lv = st.lv, net = st.net, snapNow = st.snaps[st.t];
     const nW = net.W.reduce((s, L) => s + L.length * L[0].length, 0), nB = net.B.reduce((s, b) => s + b.length, 0);
-    $('#dNetTitle').innerHTML = `${N} pixels → ${st.H ? `${st.H} hidden neurons → ` : ''}10 output neurons <span class="score">${nW.toLocaleString()} weights and ${nB} biases</span>`;
+    const hidden = arch().hidden, H1 = hidden[0];
+    $('#dNetTitle').innerHTML = `${N} pixels → ${hidden.map(n => n + ' → ').join('')}10 output neurons <span class="score">${nW.toLocaleString()} weights and ${nB} biases</span>`;
 
-    // weight pictures
-    $('#dHiddenWrap').hidden = !st.H;
-    if (st.H) {
-      const s = maxAbs(net.W[0]), cols = 8, T = 48, gap = 8, rows = Math.ceil(st.H / cols);
+    // weight pictures: the first hidden layer looks straight at the pixels
+    $('#dHiddenWrap').hidden = !H1;
+    if (H1) {
+      const s = maxAbs(net.W[0]), cols = 8, T = H1 > 16 ? 40 : 48, gap = 8, rows = Math.ceil(H1 / cols);
       const c = prep($('#dHidden'), cols * (T + gap), rows * (T + gap + 14));
       c.font = '11px "Segoe UI", system-ui, sans-serif';
       c.fillStyle = '#8a98ae';
@@ -463,7 +470,7 @@ NL.Digits = (function () {
       $('#dHidScale').textContent = `brightest = ±${fmtn(s, 2)}`;
     }
     const outW = net.W[net.W.length - 1];
-    if (!st.H) {
+    if (!H1) {
       const s = maxAbs(outW), T = 56, gap = 8;
       const c = prep($('#dOut'), 5 * (T + gap), 2 * (T + gap + 16));
       c.font = '600 12px "Segoe UI", system-ui, sans-serif';
@@ -476,24 +483,34 @@ NL.Digits = (function () {
       });
       $('#dOutH').textContent = `Output neurons: what each one looks for (brightest = ±${fmtn(s, 2)})`;
     } else {
-      // Each output neuron's weights from the hidden neurons, one coloured cell per hidden neuron.
-      const s = maxAbs(outW), cw = Math.min(18, Math.floor(420 / st.H)), ch = 16, lw = 64;
-      const c = prep($('#dOut'), lw + st.H * cw + 4, 10 * (ch + 3) + 16);
+      // Every later layer: one row per neuron, one coloured cell per neuron it listens to.
+      const blocks = net.W.slice(1).map((W, q) => ({
+        W, from: LAYER_LETTERS[q], to: q + 2 < net.W.length ? LAYER_LETTERS[q + 1] : null,
+      }));
+      const ch = 12, lw = 70, head = 18, maxCols = Math.max(...blocks.map(b => b.W[0].length));
+      const cw = Math.min(18, Math.floor(430 / maxCols));
+      const heights = blocks.map(b => head + b.W.length * (ch + 2) + 14);
+      const c = prep($('#dOut'), lw + maxCols * cw + 4, heights.reduce((a, b) => a + b, 0));
       c.font = '11px "Segoe UI", system-ui, sans-serif';
-      c.textAlign = 'right';
-      outW.forEach((w, d) => {
-        const y = d * (ch + 3);
-        c.fillStyle = '#c4cede';
-        c.fillText('neuron ' + d, lw - 8, y + 12);
-        w.forEach((v, j) => {
-          c.fillStyle = 'rgb(' + mixc(v >= 0 ? POS : NEG, Math.min(1, Math.abs(v) / s)) + ')';
-          c.fillRect(lw + j * cw, y, cw - 2, ch);
+      let y0 = 0;
+      blocks.forEach((b, q) => {
+        const s = maxAbs(b.W), n = b.W[0].length;
+        c.fillStyle = '#8a98ae';
+        c.textAlign = 'left';
+        c.fillText(`${b.to ? `layer ${q + 2} (${b.to})` : 'output neurons'}: how much each listens to layer ${q + 1} (${b.from}1 … ${b.from}${n}), brightest = ±${fmtn(s, 2)}`, 0, y0 + 12);
+        b.W.forEach((w, d) => {
+          const y = y0 + head + d * (ch + 2);
+          c.fillStyle = '#c4cede';
+          c.textAlign = 'right';
+          c.fillText(b.to ? b.to + (d + 1) : 'neuron ' + d, lw - 8, y + 10);
+          w.forEach((v, j) => {
+            c.fillStyle = 'rgb(' + mixc(v >= 0 ? POS : NEG, Math.min(1, Math.abs(v) / s)) + ')';
+            c.fillRect(lw + j * cw, y, cw - 2, ch);
+          });
         });
+        y0 += heights[q];
       });
-      c.fillStyle = '#8a98ae';
-      c.textAlign = 'left';
-      c.fillText('h1 … h' + st.H + ' →', lw, 10 * (ch + 3) + 12);
-      $('#dOutH').textContent = `Output neurons: how much each one listens to each hidden neuron (brightest = ±${fmtn(s, 2)})`;
+      $('#dOutH').textContent = 'The other layers';
     }
 
     // controls
@@ -508,7 +525,7 @@ NL.Digits = (function () {
     // charts
     drawAcc($("#dAcc"), st.snaps, st.t, lv.target);
     drawErr($('#dErr'), st.snaps, st.t);
-    $('#dAccNow').textContent = `now ${fmtn(snapNow.exam, 1)}% right · goal ${lv.target}%`;
+    $('#dAccNow').textContent = `now ${fmtn(snapNow.exam, 1)}% right` + (lv.target != null ? ` · goal ${lv.target}%` : '');
     $('#dErrNow').textContent = `now ${fmtn(snapNow.err, 3)}`;
 
     renderProbe();
@@ -530,10 +547,12 @@ NL.Digits = (function () {
       c.beginPath(); c.moveTo(l, py(v)); c.lineTo(l + w, py(v)); c.stroke();
       c.fillStyle = '#8a98ae'; c.textAlign = 'right'; c.fillText(v + '%', l - 6, py(v) + 4);
     }
-    c.strokeStyle = '#4ade80';
-    c.setLineDash([5, 4]);
-    c.beginPath(); c.moveTo(l, py(goal)); c.lineTo(l + w, py(goal)); c.stroke();
-    c.setLineDash([]);
+    if (goal != null) {
+      c.strokeStyle = '#4ade80';
+      c.setLineDash([5, 4]);
+      c.beginPath(); c.moveTo(l, py(goal)); c.lineTo(l + w, py(goal)); c.stroke();
+      c.setLineDash([]);
+    }
     for (const [key, col] of [['train', '#a5b4fc'], ['exam', '#ffd166']]) {
       c.strokeStyle = col;
       c.lineWidth = 2.2;
@@ -616,7 +635,8 @@ NL.Digits = (function () {
       return;
     }
     const outs = e.res.neurons.filter(n => n.l === st.net.W.length - 1).sort((a, b) => a.j - b.j);
-    const hid = e.res.neurons.filter(n => n.l === 0 && st.H).sort((a, b) => a.j - b.j);
+    const deep = arch().hidden.length > 0;
+    const hid = e.res.neurons.filter(n => n.l === 0 && deep).sort((a, b) => a.j - b.j);
     const y = e.res.out, guess = argmax(y);
     let h = `<h3>Step ${e.step.toLocaleString()}</h3><div class="exrow"><canvas id="exPic"></canvas><div>` +
       `<p>The picture is <b>${an(e.e.d)}</b>. Right answers: neuron ${e.e.d} should say 1, every other neuron 0.</p>` +
@@ -624,9 +644,9 @@ NL.Digits = (function () {
     h += '<table class="nudges"><thead><tr><th>neuron</th><th>said</th><th>right</th><th>miss</th></tr></thead><tbody>' +
       outs.map(n => `<tr${n.j === e.e.d ? ' class="hl"' : ''}><td>${n.j}</td><td>${fmtn(y[n.j], 3)}</td><td>${n.j === e.e.d ? 1 : 0}</td><td class="${n.blame > 0 ? 'pos' : n.blame < 0 ? 'neg' : ''}">${(n.blame > 0 ? '+' : '') + fmtn(n.blame, 3)}</td></tr>`).join('') +
       '</tbody></table>';
-    const shown = st.H ? hid : outs;
-    h += `<p>Every weight gets <b>nudge = learning rate × ${st.H ? 'blame' : 'miss'} × slope × pixel</b>. A pixel with no ink is 0, so its weight doesn't move at all. ` +
-      (st.H ? 'Here are the nudges to each hidden neuron’s 196 weights, as pictures. Their blame comes back from all ten output neurons.'
+    const shown = deep ? hid : outs;
+    h += `<p>Every weight gets <b>nudge = learning rate × ${deep ? 'blame' : 'miss'} × slope × pixel</b>. A pixel with no ink is 0, so its weight doesn't move at all. ` +
+      (deep ? `Here are the nudges to each first-layer neuron’s 196 weights, as pictures. Their blame comes back from ${arch().hidden.length > 1 ? 'the layer after them' : 'all ten output neurons'}.`
         : `Here are each output neuron’s 196 nudges, as pictures. Neuron ${e.e.d} should have said more, so it gets a blue copy of the picture; neurons that said too much get an orange copy.`) +
       ' <span class="dim">(blue = weight goes up, orange = down)</span></p><canvas id="exNudges"></canvas>';
     el.innerHTML = h;
@@ -640,7 +660,7 @@ NL.Digits = (function () {
     shown.forEach((n, k) => {
       const x = (k % cols) * (T + gap), yy = Math.floor(k / cols) * (T + gap + 14);
       drawTile(c, nudges[k], x, yy, T, s);
-      c.fillText(st.H ? 'h' + (n.j + 1) : String(n.j), x + T / 2, yy + T + 11);
+      c.fillText(deep ? 'h' + (n.j + 1) : String(n.j), x + T / 2, yy + T + 11);
     });
   }
 

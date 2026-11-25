@@ -6,7 +6,7 @@
 <title>NN Builder</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cg stroke='%233fb6ff' stroke-width='2.5'%3E%3Cline x1='7' y1='8' x2='25' y2='16'/%3E%3Cline x1='7' y1='24' x2='25' y2='16'/%3E%3C/g%3E%3Ccircle cx='7' cy='8' r='5' fill='%23141b29' stroke='%238a98ae' stroke-width='2'/%3E%3Ccircle cx='7' cy='24' r='5' fill='%23141b29' stroke='%238a98ae' stroke-width='2'/%3E%3Ccircle cx='25' cy='16' r='6' fill='%23ffd166'/%3E%3C/svg%3E">
 <!-- Raise ?v= on every file link whenever the game is published, so browsers fetch matching new files. -->
-<link rel="stylesheet" href="css/style.css?v=6">
+<link rel="stylesheet" href="css/style.css?v=7">
 </head>
 <body>
 <header class="top">
@@ -27,6 +27,22 @@
   <p class="foot"><button id="wipe" class="link">Start over (forget all progress)</button></p>
 </main>
 
+<main id="sbHome" class="sbhome" hidden>
+  <section class="hero">
+    <h1>Sandbox</h1>
+    <p>Design any network you like and train it on any task you can think of. Make up a rule, click dots onto a picture, or type a table of examples. Then share your experiment with a link.</p>
+    <p><a href="#/" class="back">← Map</a></p>
+  </section>
+  <div id="sbImport" class="panel sbimport" hidden>
+    <p id="sbImportText"></p>
+    <div class="row"><button id="sbImportYes" class="primary">Add it to my experiments</button><button id="sbImportNo" class="ghost">No thanks</button></div>
+  </div>
+  <h2 class="sbh2">Your experiments</h2>
+  <div id="sbList" class="sblist"></div>
+  <h2 class="sbh2">Start something new</h2>
+  <div id="sbStart" class="sbstarts"></div>
+</main>
+
 <main id="level" hidden>
   <div class="lvhead">
     <a href="#/" class="back">← Map</a>
@@ -40,13 +56,16 @@
   </div>
   <div class="lvgrid">
     <aside class="brief panel">
-      <div id="story"></div>
-      <div id="ideaBox" class="ideabox"></div>
-      <div id="goal" class="goal"></div>
-      <div id="learnedBox" class="learned" hidden></div>
-      <div id="hints"></div>
-      <button id="hintBtn" class="ghost">Show a hint</button>
-      <button id="impossible" class="primary" hidden>🤔 I think it's impossible</button>
+      <div id="briefStd" class="briefstd">
+        <div id="story"></div>
+        <div id="ideaBox" class="ideabox"></div>
+        <div id="goal" class="goal"></div>
+        <div id="learnedBox" class="learned" hidden></div>
+        <div id="hints"></div>
+        <button id="hintBtn" class="ghost">Show a hint</button>
+        <button id="impossible" class="primary" hidden>🤔 I think it's impossible</button>
+      </div>
+      <div id="sbEditor" class="sbeditor" hidden></div>
     </aside>
 
     <section class="center" id="mainCenter">
@@ -128,7 +147,8 @@
         <p id="testsTip" class="tip">Click a row to send it through the network.</p>
       </div>
       <div id="examPanel" class="panel tests">
-        <h3>The exam <span class="score">numbers it has never seen</span></h3>
+        <h3>The exam <span id="examScore" class="score"></span></h3>
+        <p class="tip">Examples it never learns from.</p>
         <table id="exam" class="ttab"></table>
       </div>
       <div class="panel pic">
@@ -242,6 +262,26 @@
   </div>
 </div>
 
+<div id="sbTable" class="modal" hidden>
+  <div class="card wide">
+    <div class="big">Your examples</div>
+    <p class="tip">One row per example: the inputs, then the right answers (in yellow).</p>
+    <div class="sbtablewrap"><table class="sbtable"><thead id="sbTableHead"></thead><tbody id="sbTableBody"></tbody></table></div>
+    <p id="sbTableMsg" class="bad"></p>
+    <div class="row"><button id="sbAddRow" class="ghost">+ Add a row</button><span class="grow"></span><button id="sbTableCancel" class="ghost">Cancel</button><button id="sbTableDone" class="primary">Done</button></div>
+  </div>
+</div>
+
+<div id="sbShare" class="modal" hidden>
+  <div class="card">
+    <div class="big">🔗 Share this experiment</div>
+    <p>Anyone who opens this link gets their own copy of the experiment: the task and the network design. (Not the trained numbers: they'll train it themselves.)</p>
+    <input id="sbShareLink" class="sharelink" readonly aria-label="Share link">
+    <p id="sbShareMsg" class="tip"></p>
+    <div class="row"><button id="sbShareClose" class="ghost">Close</button><button id="sbShareCopy" class="primary">Copy link</button></div>
+  </div>
+</div>
+
 <div id="gloss" class="modal" hidden>
   <div class="card wide">
     <div class="big">📖 Words</div>
@@ -250,10 +290,11 @@
   </div>
 </div>
 
-<script src="js/nn.js?v=6"></script>
-<script src="js/views.js?v=6"></script>
-<script src="js/levels.js?v=6"></script>
-<script src="js/digits.js?v=6"></script>
-<script src="js/game.js?v=6"></script>
+<script src="js/nn.js?v=7"></script>
+<script src="js/views.js?v=7"></script>
+<script src="js/levels.js?v=7"></script>
+<script src="js/digits.js?v=7"></script>
+<script src="js/sandbox.js?v=7"></script>
+<script src="js/game.js?v=7"></script>
 </body>
 </html>

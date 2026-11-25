@@ -372,3 +372,49 @@ details summary { cursor: pointer; color: var(--pos); font-size: 13.5px; }
 #exNudges { display: block; max-width: 100%; margin-top: 8px; }
 #dCenter canvas, #dSide canvas:not(.pad) { max-width: 100%; height: auto; }
 #dAcc, #dErr { width: 100% !important; }
+
+/* the Sandbox */
+.sbhome { max-width: 1040px; margin: 0 auto; padding: 8px 20px 40px; }
+.sbh2 { font-size: 19px; margin: 26px 0 12px; }
+.sblist { display: flex; flex-direction: column; gap: 8px; }
+.sbcard { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); }
+.sbname { font-weight: 700; color: var(--text); text-decoration: none; font-size: 16px; }
+.sbname:hover { color: var(--gold); }
+.sbsum { color: var(--dim); font-size: 13px; flex: 1; }
+.sbbtns { display: flex; gap: 6px; }
+.sbbtns .ghost { font-size: 13px; padding: 5px 10px; text-decoration: none; color: var(--text); }
+.sbstarts { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.sbstart { display: flex; flex-direction: column; gap: 4px; text-align: left; padding: 14px; border-radius: 12px; border: 1px solid #4a5f8c; background: var(--panel); }
+.sbstart:hover { border-color: var(--pos); background: #182136; }
+.sbstart span { color: var(--dim); font-size: 13px; }
+.sbimport { margin: 8px 0 16px; border-color: var(--gold); }
+.sbimport .row { display: flex; gap: 10px; }
+.briefstd { display: flex; flex-direction: column; gap: 12px; }
+.sbeditor { display: flex; flex-direction: column; gap: 10px; }
+.sbeditor .trow { gap: 6px 8px; }
+.sbtop { display: flex; flex-direction: column; gap: 8px; }
+.sbnamein { font: 700 17px "Segoe UI", system-ui, sans-serif; color: var(--text); background: #0e1420; border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; width: 100%; }
+.sbacts { display: flex; gap: 6px; flex-wrap: wrap; }
+.sbacts .ghost, .sbacts .primary { font-size: 13px; padding: 5px 10px; text-decoration: none; color: inherit; }
+.sbacts .primary { color: #1a1405; }
+.sbh { font-size: 12px; text-transform: uppercase; letter-spacing: .07em; color: var(--pos); margin: 8px 0 0; border-top: 1px solid var(--line); padding-top: 12px; }
+.sbeditor .seg button { padding: 4px 9px; font-size: 12.5px; }
+.rule { display: flex; align-items: center; gap: 8px; font-family: var(--mono); }
+.rule input { flex: 1; min-width: 0; font: 15px var(--mono); color: var(--text); background: #0e1420; border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
+.range input, #sbDotV { width: 64px; font: 13px var(--mono); color: var(--text); background: #0e1420; border: 1px solid var(--line); border-radius: 6px; padding: 3px 5px; }
+.range b { font-family: var(--mono); min-width: 14px; }
+.sbcount { font-size: 13.5px; margin: 0; color: var(--good); }
+.sbcount.bad { color: #fca5a5; }
+.layer select, .sbeditor select { font: 13px "Segoe UI", system-ui, sans-serif; color: var(--text); background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 4px 6px; }
+.layer b { font-family: var(--mono); }
+.sbtablewrap { overflow: auto; max-height: 55vh; margin: 8px 0; }
+.sbtable { border-collapse: collapse; }
+.sbtable th { font: 600 12px var(--mono); color: var(--dim); padding: 4px; }
+.sbtable th.out { color: var(--gold); }
+.sbtable input { width: 70px; font: 13px var(--mono); color: var(--text); background: #0e1420; border: 1px solid var(--line); border-radius: 6px; padding: 3px 5px; }
+.sbtable input.badcell { border-color: var(--bad); }
+.sbtable .del { padding: 2px 8px; font-size: 12px; }
+.card .row .grow { flex: 1; }
+.sharelink { width: 100%; font: 12px var(--mono); color: var(--text); background: #0e1420; border: 1px solid var(--line); border-radius: 8px; padding: 8px; }
+.tmsg.goodmsg { color: var(--good); }
+#pic.dotedit { cursor: crosshair; }

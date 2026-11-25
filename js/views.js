@@ -123,6 +123,13 @@ window.NL = window.NL || {};
     const raw = range / n, p = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / p;
     return (f < 1.5 ? 1 : f < 3.5 ? 2 : f < 7.5 ? 5 : 10) * p;
   }
+  // Round numbers to label an axis from lo to hi.
+  NL.niceTicks = function (lo, hi, n) {
+    if (!(hi > lo)) return [lo];
+    const st = niceStep(hi - lo, n || 4), out = [];
+    for (let v = Math.ceil(lo / st - 1e-9) * st; v <= hi + 1e-9; v += st) out.push(Math.round(v / st) * st);
+    return out;
+  };
   function polyline(c, pts) {
     c.beginPath();
     pts.forEach(([x, y], i) => (i ? c.lineTo(x, y) : c.moveTo(x, y)));
@@ -130,18 +137,21 @@ window.NL = window.NL || {};
   }
 
   // The network's answer for every pair of inputs, with the examples drawn on top as dots.
-  // o: { range: [min, max], lo, hi, points: [{x, t}], hollow, lines: [[w1, w2, bias]], ticks, names }
+  // o: { range: [min, max], rangeY (if different), lo, hi, points: [{x, t}], hollow,
+  //      lines: [[w1, w2, bias]], ticks, ticksY, names }
+  // Returns a function turning a click on the canvas (in CSS pixels) into [a, b].
   NL.drawHeat = function (cv, f, o) {
     const S = 280, c = prep(cv, S, S), pl = 24, pt = 6, size = S - pl - 8, N = 56, cell = size / N;
     const x0 = o.range[0], x1 = o.range[1], span = x1 - x0;
+    const [y0, y1] = o.rangeY || o.range, spanY = y1 - y0;
     for (let iy = 0; iy < N; iy++) {
       for (let ix = 0; ix < N; ix++) {
-        const a = x0 + ((ix + 0.5) / N) * span, b = x1 - ((iy + 0.5) / N) * span;
+        const a = x0 + ((ix + 0.5) / N) * span, b = y1 - ((iy + 0.5) / N) * spanY;
         c.fillStyle = heat((f(a, b) - o.lo) / (o.hi - o.lo), false);
         c.fillRect(pl + ix * cell, pt + iy * cell, cell + 0.6, cell + 0.6);
       }
     }
-    const px = a => pl + ((a - x0) / span) * size, py = b => pt + ((x1 - b) / span) * size;
+    const px = a => pl + ((a - x0) / span) * size, py = b => pt + ((y1 - b) / spanY) * size;
     if (o.lines) {
       c.save();
       c.beginPath();
@@ -153,10 +163,12 @@ window.NL = window.NL || {};
       for (const [w1, w2, b0] of o.lines) {
         if (!w1 && !w2) continue;
         if (!isFinite(w1 + w2 + b0)) continue;
-        const lo = x0 - span, hi = x1 + span;
-        if (Math.abs(w2) >= Math.abs(w1)) {
+        // Draw the line along whichever axis it crosses more steeply on screen.
+        if (Math.abs(w2) * spanY >= Math.abs(w1) * span) {
+          const lo = x0 - span, hi = x1 + span;
           polyline(c, [[px(lo), py(-(w1 * lo + b0) / w2)], [px(hi), py(-(w1 * hi + b0) / w2)]]);
         } else {
+          const lo = y0 - spanY, hi = y1 + spanY;
           polyline(c, [[px(-(w2 * lo + b0) / w1), py(lo)], [px(-(w2 * hi + b0) / w1), py(hi)]]);
         }
       }
@@ -178,19 +190,18 @@ window.NL = window.NL || {};
     }
     c.fillStyle = DIM;
     c.font = FONT;
-    for (const t of o.ticks) {
-      c.textAlign = 'center';
-      c.fillText(fmt(t), px(t), pt + size + 14);
-      c.textAlign = 'right';
-      c.fillText(fmt(t), pl - 6, py(t) + 4);
-    }
+    c.textAlign = 'center';
+    for (const t of o.ticks) c.fillText(fmt(t), px(t), pt + size + 14);
     c.textAlign = 'right';
+    for (const t of o.ticksY || o.ticks) c.fillText(fmt(t), pl - 6, py(t) + 4);
     c.fillText(o.names[0] + ' →', pl + size, pt + size + 14);
     c.save();
     c.translate(12, pt + 4);
     c.rotate(-Math.PI / 2);
     c.fillText(o.names[1] + ' →', 0, 0);
     c.restore();
+    const k = S / cv.getBoundingClientRect().width;
+    return (cx, cy) => [x0 + ((cx * k - pl) / size) * span, y1 - ((cy * k - pt) / size) * spanY];
   };
 
   // A graph of the network's answer for every value of its one input.
@@ -248,6 +259,9 @@ window.NL = window.NL || {};
       c.stroke();
     }
     c.restore();
+    // Turns a click on the canvas (in CSS pixels) into [input, output].
+    const k = W / cv.getBoundingClientRect().width;
+    return (cx, cy) => [x0 + ((cx * k - l) / w) * (x1 - x0), y0 + (1 - (cy * k - t) / h) * (y1 - y0)];
   };
 
   // The error for every possible value of one weight: a valley.

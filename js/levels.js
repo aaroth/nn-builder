@@ -10,6 +10,7 @@ window.NL = window.NL || {};
     { id: 3, title: 'Learning', blurb: 'The network finds its own weights, and you watch it learn.' },
     { id: 4, title: 'The Lab', blurb: 'Design your own networks and train them on any task.' },
     { id: 5, title: 'Reading Digits', blurb: 'Teach a network to read handwritten numbers, including yours.' },
+    { id: 6, title: 'Sandbox', blurb: 'Design any network and train it on any task you like. Opens with the Lab.' },
   ];
 
   const fmt = v => NL.fmt(v);
@@ -333,6 +334,9 @@ window.NL = window.NL || {};
         <p>The hidden neurons learned <b>features</b>, pieces of digits, and the output neurons recognise a digit by which pieces are there. Real image-recognition networks work the same way, with millions of neurons in many layers: early layers find edges, later layers find shapes, and the last layers find whole objects.</p>`,
     }),
   );
+
+  // ---------- Chapter 6: the Sandbox (its screens are in sandbox.js) ----------
+  NL.LEVELS.push(level({ id: 21, chapter: 6, mode: 'sandbox', title: 'Sandbox', idea: 'Anything you like', openAfter: 16 }));
 
   const grid = (vals, f) => [].concat(...vals.map(a => vals.map(b => [[a, b], f(a, b)])));
   const NUMBER = { out: 'linear', rates: [0.003, 0.01, 0.03, 0.1, 0.3], rate: 0.01, ticks: [0, 1, 2, 3], range: [-0.5, 3.5] };

@@ -24,7 +24,7 @@ window.NL = window.NL || {};
   // ---------- saved progress (this computer only) ----------
   // lab: the chosen task and network design, plus a star and the fewest training steps for each task.
   const freshLab = () => ({ task: 'add', arch: { hidden: [], act: 'tanh' }, stars: {}, best: {} });
-  let save = { done: {}, params: {}, hints: {}, lab: freshLab(), digits: { mine: [] } };
+  let save = { done: {}, params: {}, hints: {}, lab: freshLab(), digits: { mine: [] }, sandbox: { exps: [] } };
   try {
     const s = JSON.parse(localStorage.getItem(KEY) || 'null');
     if (s && typeof s === 'object') {
@@ -36,7 +36,7 @@ window.NL = window.NL || {};
         act: ['sigmoid', 'tanh', 'relu'].indexOf(a.act) >= 0 ? a.act : 'tanh',
       };
       save = { done: s.done || {}, params: s.params || {}, hints: s.hints || {}, lab, tip1: !!s.tip1,
-        digits: s.digits && Array.isArray(s.digits.mine) ? s.digits : { mine: [] } };
+        digits: s.digits && Array.isArray(s.digits.mine) ? s.digits : { mine: [] }, sandbox: NL.Sandbox.sanitizeAll(s.sandbox) };
     }
   } catch (e) { /* start fresh */ }
   function store() {
@@ -44,12 +44,21 @@ window.NL = window.NL || {};
   }
 
   const isDone = id => !!save.done[id];
-  const isOpen = id => ALL || id === 1 || isDone(id) || isDone(id - 1);
+  const isOpen = id => {
+    const lv = LEVELS.find(l => l.id === id);
+    if (lv && lv.openAfter) return ALL || isDone(lv.openAfter);
+    return ALL || id === 1 || isDone(id) || isDone(id - 1);
+  };
+  const SANDBOX = () => LEVELS.find(l => l.mode === 'sandbox');
+  const counted = () => LEVELS.filter(l => l.mode !== 'sandbox');
   const cls = v => (v > 0 ? 'pos' : v < 0 ? 'neg' : 'zero');
   const paren = (v, d) => (v < 0 ? `(${fmtn(v, d || 2)})` : fmtn(v, d || 2));
   const signed = (v, d) => (v > 0 ? '+' : '') + fmtn(v, d || 4);
   const getP = (net, p) => (p.i < 0 ? net.B[p.l][p.j] : net.W[p.l][p.j][p.i]);
   const setP = (net, p, v) => { if (p.i < 0) net.B[p.l][p.j] = v; else net.W[p.l][p.j][p.i] = v; };
+  const tv = t => (Array.isArray(t) ? t : [t]); // a right answer as a list, one per output
+  // Is the network's answer y (a list) within tol of every right answer?
+  const close = (y, t, tol) => tv(t).every((v, k) => Math.abs(y[k] - v) < tol);
   const seg = (el, items, on) => {
     el.innerHTML = items.map(([v, label]) => `<button data-v="${v}" class="${String(v) === String(on) ? 'on' : ''}">${label}</button>`).join('');
   };
@@ -61,8 +70,20 @@ window.NL = window.NL || {};
   function route() {
     stopTraining();
     NL.Digits.close();
+    const share = location.hash.match(/^#\/share\/([A-Za-z0-9_-]+)$/);
+    if (share) { closeModals(); NL.Sandbox.importLink(share[1]); return; }
+    const sb = location.hash.match(/^#\/sandbox(?:\/([a-z0-9]+))?$/);
+    // The lock only hides the map tile, so a shared link works for anyone.
+    if (sb) {
+      closeModals();
+      if (sb[1]) NL.Sandbox.open(sb[1]);
+      else NL.Sandbox.home();
+      return;
+    }
+    NL.Sandbox.leave();
     const m = location.hash.match(/^#\/level\/(\d+)/);
     const lv = m && LEVELS.find(l => l.id === +m[1]);
+    if (lv && lv.mode === 'sandbox') { location.replace('#/sandbox'); return; }
     if (lv && isOpen(lv.id)) openLevel(lv);
     else showMap();
   }
@@ -71,6 +92,8 @@ window.NL = window.NL || {};
     $('#win').hidden = true;
     $('#quiz').hidden = true;
     $('#gloss').hidden = true;
+    $('#sbTable').hidden = true;
+    $('#sbShare').hidden = true;
   }
 
   // ---------- the map ----------
@@ -78,16 +101,17 @@ window.NL = window.NL || {};
     cur = null;
     closeModals();
     $('#level').hidden = true;
+    $('#sbHome').hidden = true;
     $('#map').hidden = false;
-    const done = LEVELS.filter(l => isDone(l.id)).length;
-    $('#progress').textContent = done ? `${done} of ${LEVELS.length} levels complete` : '';
+    const done = counted().filter(l => isDone(l.id)).length;
+    $('#progress').textContent = done ? `${done} of ${counted().length} levels complete` : '';
     // Continue: the first open level not yet finished, or the Lab once everything is done.
-    const next = LEVELS.find(l => isOpen(l.id) && !isDone(l.id)) || LEVELS.find(l => l.mode === 'lab');
+    const next = counted().find(l => isOpen(l.id) && !isDone(l.id)) || LEVELS.find(l => l.mode === 'lab');
     $('#continue').href = '#/level/' + next.id;
     $('#continue').textContent = (done ? 'Continue: ' : 'Start: ') + (next.mode === 'lab' ? 'The Lab' : `Level ${next.id} · ${next.title}`) + ' →';
     $('#chapters').innerHTML = CHAPTERS.map(ch => {
       const lvs = LEVELS.filter(l => l.chapter === ch.id), n = lvs.filter(l => isDone(l.id)).length;
-      const prog = lvs.length && lvs[0].mode !== 'lab' ? `<span class="chprog">${n} of ${lvs.length}</span>` : '';
+      const prog = lvs.length && lvs[0].mode !== 'lab' && lvs[0].mode !== 'sandbox' ? `<span class="chprog">${n} of ${lvs.length}</span>` : '';
       return `<section class="chapter${lvs.length ? '' : ' later'}">
         <h2><span class="chn">Chapter ${ch.id}</span> ${ch.title} ${prog}</h2><p>${ch.blurb}</p>
         <div class="tiles">${lvs.length ? lvs.map(tile).join('') : '<div class="soon">Coming soon</div>'}</div></section>`;
@@ -99,8 +123,11 @@ window.NL = window.NL || {};
   function tile(l) {
     const open = isOpen(l.id), done = isDone(l.id);
     const stars = Object.keys(save.lab.stars).length;
-    const badge = l.mode === 'lab' && open ? `<span class="stars">★ ${stars} of ${NL.LAB.length}</span>` : done ? '✓' : open ? '' : '🔒';
-    return `<a class="tile ${done ? 'done' : open ? 'open' : 'locked'}"${open ? ` href="#/level/${l.id}"` : ''}>
+    const nExp = save.sandbox.exps.length;
+    const badge = l.mode === 'lab' && open ? `<span class="stars">★ ${stars} of ${NL.LAB.length}</span>`
+      : l.mode === 'sandbox' && open ? `<span class="stars">${nExp ? nExp + ' saved' : ''}</span>` : done ? '✓' : open ? '' : '🔒';
+    const href = l.mode === 'sandbox' ? '#/sandbox' : '#/level/' + l.id;
+    return `<a class="tile ${done ? 'done' : open ? 'open' : 'locked'}"${open ? ` href="${href}"` : ''}>
       <span class="num">${l.id}</span><span class="tt">${l.title}</span><span class="tag">${l.idea}</span>
       <span class="badge">${badge}</span></a>`;
   }
@@ -131,10 +158,16 @@ window.NL = window.NL || {};
 
   // ---------- opening a level ----------
   // Shows the header and briefing that every level has.
-  function fillBrief(lv, lab) {
+  function fillBrief(lv, lab, keepScroll) {
     $('#map').hidden = true;
+    $('#sbHome').hidden = true;
     $('#level').hidden = false;
-    $('#lvNum').textContent = lab ? 'Chapter 4' : 'Level ' + lv.id;
+    const sb = !!lv.sandbox;
+    $('#briefStd').hidden = sb;
+    $('#sbEditor').hidden = !sb;
+    $('.lvhead .back').href = sb ? '#/sandbox' : '#/';
+    $('.lvhead .back').textContent = sb ? '← Experiments' : '← Map';
+    $('#lvNum').textContent = sb ? 'Sandbox' : lab ? 'Chapter 4' : 'Level ' + lv.id;
     $('#lvTitle').textContent = lv.title;
     $('#lvIdea').textContent = lv.idea;
     $('#story').innerHTML = lv.story;
@@ -144,14 +177,14 @@ window.NL = window.NL || {};
     const digit = lv.mode === 'paint' || lv.mode === 'digits';
     $('#mainCenter').hidden = $('#mainSide').hidden = digit;
     $('#dCenter').hidden = $('#dSide').hidden = !digit;
-    document.title = `${lv.id}. ${lv.title} · NN Builder`;
-    window.scrollTo(0, 0);
+    document.title = sb ? `${lv.title} · Sandbox · NN Builder` : `${lv.id}. ${lv.title} · NN Builder`;
+    if (!keepScroll) window.scrollTo(0, 0);
   }
 
   // Chapter 5's levels have their own screens, in digits.js.
-  function openDigitLevel(lv) {
+  function openDigitLevel(lv, keepScroll) {
     cur = { lv, mode: lv.mode, lab: false, sel: -1 };
-    fillBrief(lv, false);
+    fillBrief(lv, false, keepScroll);
     $('#reset').hidden = true;
     renderHints();
     renderDoneBits();
@@ -159,13 +192,16 @@ window.NL = window.NL || {};
     NL.Digits.open(lv, { save: () => save, store, complete });
   }
 
-  function openLevel(lv) {
+  function openLevel(lv, keepScroll) {
     closeModals();
-    if (lv.mode === 'paint' || lv.mode === 'digits') { openDigitLevel(lv); return; }
+    stopTraining();
+    NL.Digits.close();
+    if (lv.mode === 'paint' || lv.mode === 'digits') { openDigitLevel(lv, keepScroll); return; }
     const lab = lv.mode === 'lab';
     if (lab) lv = labLevel(lv);
     const mode = lv.mode || 'build';
-    cur = { lv, mode, lab, sel: mode === 'train' ? -1 : 0, row: 0, view: 'out', passing: null, rate: lv.rate, speed: 'fast',
+    const prevSpeed = cur && cur.lv && cur.lv.sandbox && lv.sandbox ? cur.speed : 'fast';
+    cur = { lv, mode, lab, sel: mode === 'train' ? -1 : 0, row: 0, view: 'out', passing: null, rate: lv.rate, speed: prevSpeed,
       act: lv.acts[0], hidden: lv.hidden || 0, tryX: lv.tryIt ? lv.tryIt.slice() : null };
     if (lv.secrets) {
       cur.secret = lv.secrets[Math.floor(Math.random() * lv.secrets.length)];
@@ -174,7 +210,7 @@ window.NL = window.NL || {};
     cur.samples = cur.tests.map(([x, t]) => ({ x, t }));
     makeNet(false);
 
-    fillBrief(lv, lab);
+    fillBrief(lv, lab, keepScroll);
     renderDoneBits();
     $('#editor').classList.toggle('pulse', lv.id === 1 && !save.tip1);
     const show = (id, on) => { $(id).hidden = !on; };
@@ -202,7 +238,10 @@ window.NL = window.NL || {};
   function makeNet(random) {
     const lv = cur.lv;
     let sizes = lv.sizes, acts = lv.acts, names = lv.names;
-    if (cur.lab) {
+    if (lv.sandbox) {
+      sizes = lv.sbSizes;
+      names = lv.sbNames;
+    } else if (cur.lab) {
       const a = save.lab.arch, t = labTask();
       sizes = [2].concat(a.hidden, [1]);
       acts = a.hidden.map(() => a.act).concat([t.out]);
@@ -222,7 +261,8 @@ window.NL = window.NL || {};
         if (lv.editBias) { index[`${l},${j},-1`] = P.length; P.push({ l, j, i: -1 }); }
       }
     }
-    if (random || !lv.W) net.randomize(NL.rng((Math.random() * 4294967296) >>> 0), 1);
+    if (lv.sandbox) net.randomizeFan(NL.rng((Math.random() * 4294967296) >>> 0));
+    else if (random || !lv.W) net.randomize(NL.rng((Math.random() * 4294967296) >>> 0), 1);
     else loadStart();
     if (cur.mode === 'build') {
       const saved = save.params[lv.id];
@@ -230,7 +270,8 @@ window.NL = window.NL || {};
     }
     if (cur.mode === 'train') {
       cur.hist = [snapshot()];
-      cur.errs = [net.loss(cur.samples)];
+      cur.errs = [cur.samples.length ? net.loss(cur.samples) : 0];
+      cur.msgGood = '';
       cur.t = 0;
       cur.last = null;
       cur.msg = '';
@@ -238,7 +279,7 @@ window.NL = window.NL || {};
       if (cur.sel >= P.length) cur.sel = -1;
       // The order examples are shown in: as listed, or shuffled in the Lab where lists are long.
       cur.order = cur.tests.map((_, k) => k);
-      if (cur.lab) {
+      if (cur.lab || lv.sandbox) {
         const rnd = NL.rng((Math.random() * 4294967296) >>> 0);
         for (let k = cur.order.length - 1; k > 0; k--) {
           const q = Math.floor(rnd() * (k + 1));
@@ -274,7 +315,7 @@ window.NL = window.NL || {};
     const lv = cur.lv, done = isDone(lv.id) && !cur.lab;
     const next = LEVELS.find(l => l.id === lv.id + 1);
     $('#nextBtn').hidden = !isDone(lv.id) || !next;
-    if (next) $('#nextBtn').href = '#/level/' + next.id;
+    if (next) $('#nextBtn').href = next.mode === 'sandbox' ? '#/sandbox' : '#/level/' + next.id;
     const recap = lv.recap || (typeof lv.learned === 'function' ? lv.learned({ recordNote: '' }) : lv.learned);
     $('#learnedBox').hidden = !done;
     $('#learnedBox').innerHTML = done ? '<h4>What you learned</h4>' + recap : '';
@@ -295,15 +336,20 @@ window.NL = window.NL || {};
     if (main) {
       $(sel).hidden = tests.length > TABLE_MAX;
       $('#testsTip').textContent = tests.length > TABLE_MAX
-        ? `${tests.length} examples: too many to list. They are the dots on the Picture.`
+        ? `${tests.length} examples: too many to list.${lv.picture && lv.picture.kind === 'none' ? '' : ' They are the dots on the Picture.'}`
         : 'Click a row to send it through the network.';
       if (tests.length > TABLE_MAX) { $(sel).innerHTML = '<tbody></tbody>'; return; }
+    } else {
+      // A long exam is summed up in its score rather than listed.
+      $(sel).hidden = tests.length > TABLE_MAX;
+      if (tests.length > TABLE_MAX) { $(sel).innerHTML = '<tbody></tbody>'; return; }
     }
-    let h = '<thead><tr>' + lv.names[0].map(n => `<th>${n}</th>`).join('') +
-      `<th>right answer</th><th>network</th>${check ? '<th></th>' : ''}</tr></thead><tbody>`;
+    const outs = lv.names[lv.names.length - 1], K = outs.length;
+    const heads = K === 1 ? '<th>right answer</th><th>network</th>' : outs.map(o => `<th>${o} right</th><th>${o} net</th>`).join('');
+    let h = '<thead><tr>' + lv.names[0].map(n => `<th>${n}</th>`).join('') + heads + `${check ? '<th></th>' : ''}</tr></thead><tbody>`;
     tests.forEach(([x, t], k) => {
       h += `<tr data-r="${main ? k : ''}">` + x.map(v => `<td>${fmt(v)}</td>`).join('') +
-        `<td>${hide ? '🔒' : fmt(t)}</td><td class="y"></td>${check ? '<td class="ok"></td>' : ''}</tr>`;
+        tv(t).map((v, q) => `<td>${hide ? '🔒' : fmt(v)}</td><td class="y" data-k="${q}"></td>`).join('') + `${check ? '<td class="ok"></td>' : ''}</tr>`;
     });
     if (main && cur.tryX) {
       h += '<tr data-r="try" class="try">' + cur.tryX.map((v, i) => `<td><input type="number" step="any" data-i="${i}" value="${v}" aria-label="${lv.names[0][i]}"></td>`).join('') +
@@ -357,11 +403,11 @@ window.NL = window.NL || {};
     let pass = 0;
     const rows = $('#tests').tBodies[0].rows;
     cur.tests.forEach(([x, t], k) => {
-      const y = net.forward(x)[0], ok = Math.abs(y - t) < tol, tr = rows[k];
+      const y = net.forward(x), ok = close(y, t, tol), tr = rows[k];
       if (ok) pass++;
       if (!tr) return;
       tr.className = (mode === 'meter' || mode === 'descent' ? '' : ok ? 'pass' : 'fail') + (cur.row === k ? ' sel' : '');
-      tr.querySelector('.y').textContent = mode === 'train' ? fmtn(y, 3) : fmt(y);
+      tr.querySelectorAll('.y').forEach(td => { td.textContent = mode === 'train' ? fmtn(y[+td.dataset.k || 0], 3) : fmt(y[+td.dataset.k || 0]); });
       const okc = tr.querySelector('.ok');
       if (okc) okc.textContent = ok ? '✓' : '✗';
     });
@@ -370,25 +416,27 @@ window.NL = window.NL || {};
       tr.className = 'try' + (cur.row === 'try' ? ' sel' : '');
       tr.querySelector('.y').textContent = fmt(net.forward(cur.tryX)[0]);
     }
-    let examPass = true;
+    let examPass = true, examRight = 0;
     if (lv.exam) {
       const er = $('#exam').tBodies[0].rows;
       lv.exam.forEach(([x, t], k) => {
-        const y = net.forward(x)[0], ok = Math.abs(y - t) < tol;
-        if (!ok) examPass = false;
+        const y = net.forward(x), ok = close(y, t, tol);
+        if (ok) examRight++; else examPass = false;
+        if (!er[k]) return;
         er[k].className = ok ? 'pass' : 'fail';
-        er[k].querySelector('.y').textContent = fmtn(y, 3);
+        er[k].querySelectorAll('.y').forEach(td => { td.textContent = fmtn(y[+td.dataset.k || 0], 3); });
         er[k].querySelector('.ok').textContent = ok ? '✓' : '✗';
       });
+      $('#examScore').textContent = `${examRight} of ${lv.exam.length} right`;
     }
-    const n = cur.tests.length, all = pass === n;
-    $('#score').textContent = mode === 'build' || mode === 'train' ? `${pass} of ${n} ${mode === 'build' ? 'passing' : 'right'}` : '';
-    $('#barFill').style.width = (100 * pass) / n + '%';
+    const n = cur.tests.length, all = n > 0 && pass === n;
+    $('#score').textContent = !n ? 'no examples yet' : mode === 'build' || mode === 'train' ? `${pass} of ${n} ${mode === 'build' ? 'passing' : 'right'}` : '';
+    $('#barFill').style.width = n ? (100 * pass) / n + '%' : '0%';
     $('#barFill').classList.toggle('full', all);
 
     drawPicture();
 
-    net.forward(cur.row === 'try' ? cur.tryX : cur.tests[cur.row][0]);
+    net.forward(cur.row === 'try' ? cur.tryX : cur.tests[cur.row] ? cur.tests[cur.row][0] : new Array(net.sizes[0]).fill(0));
     const train = mode === 'train';
     NL.drawNet($('#net'), net, {
       name: nm, bias: lv.editBias, sel: cur.sel, pick: cur.pick, flow: true,
@@ -417,6 +465,8 @@ window.NL = window.NL || {};
   function drawPicture() {
     const { lv, net, mode } = cur, L = net.sizes.length, cv = $('#pic');
     let key = '';
+    cv.hidden = false;
+    cv.classList.toggle('dotedit', !!lv.dotsEdit);
     if (mode === 'meter' || mode === 'descent') {
       const w = net.W[0][0][0];
       NL.drawValley(cv, Object.assign({}, lv.valley, {
@@ -428,19 +478,24 @@ window.NL = window.NL || {};
         ? '<span class="k"><i class="dot blue"></i>your tries</span><span class="k"><i class="dot gold"></i>the weight now</span>'
         : '<span class="k"><i class="ln grey"></i>the whole valley</span><span class="k"><i class="dot gold"></i>the ball</span><span class="k"><i class="ln white"></i>slope under the ball</span>';
       $('#picTabs').innerHTML = '';
+    } else if (lv.picture.kind === 'none') {
+      cv.hidden = true;
+      key = `<p>There's no picture for ${net.sizes[0]} inputs: it would need ${net.sizes[0] + 1} dimensions! Use the examples table and the charts instead.</p>`;
+      $('#picTabs').innerHTML = '';
     } else if (lv.picture.kind === 'graph') {
-      const step = lv.acts[0] === 'step', w = net.W[0][0][0];
-      NL.drawGraph(cv, v => net.forward([v])[0], Object.assign({}, lv.picture, {
-        names: [nm(0, 0), nm(1, 0)],
-        points: cur.tests.map(([x, t]) => [x[0], t]),
+      const step = net.acts[0] === 'step' && L === 2, w = net.W[0][0][0], k = cur.outK || 0;
+      cur.picMap = NL.drawGraph(cv, v => net.forward([v])[k], Object.assign({}, lv.picture, {
+        names: [nm(0, 0), nm(L - 1, k)],
+        points: cur.tests.map(([x, t]) => [x[0], tv(t)[k]]),
         marks: step && w ? [-net.B[0][0] / w] : [],
       }));
       key = `<span class="k"><i class="ln"></i>network's answer</span><span class="k"><i class="dot"></i>right answers</span>` +
         (step ? '<span class="k"><i class="dash"></i>where Σ = 0</span>' : '');
-      $('#picTabs').innerHTML = '';
+      const outs = cur.names[L - 1];
+      $('#picTabs').innerHTML = outs.length > 1 ? 'Show: ' + outs.map((n, q) => `<button data-v="o${q}" class="${q === k ? 'on' : ''}">${n}</button>`).join('') : '';
     } else {
       // cur.view is 'out' for the network's answer, or [layer, neuron] for one hidden neuron.
-      const pic = lv.picture, hid = cur.view !== 'out', [vl, vj] = hid ? cur.view : [L - 1, 0];
+      const pic = lv.picture, hid = cur.view !== 'out', [vl, vj] = hid ? cur.view : [L - 1, cur.outK || 0];
       const f = (a, b) => (net.forward([a, b]), net.a[vl][vj]);
       let lo = pic.lo, hi = pic.hi;
       if (hid) {
@@ -455,9 +510,9 @@ window.NL = window.NL || {};
         const js = L === 2 ? [0] : hid ? [vj] : net.W[0].map((_, j) => j);
         lines = js.map(j => [net.W[0][j][0], net.W[0][j][1], net.B[0][j]]);
       }
-      NL.drawHeat(cv, f, {
-        range: pic.range, lo, hi, ticks: pic.ticks, names: lv.names[0],
-        points: cur.tests.map(([x, t]) => ({ x, t })), hollow: hid, lines,
+      cur.picMap = NL.drawHeat(cv, f, {
+        range: pic.range, rangeY: pic.rangeY, lo, hi, ticks: pic.ticks, ticksY: pic.ticksY, names: lv.names[0],
+        points: cur.tests.map(([x, t]) => ({ x, t: tv(t)[vl === L - 1 ? vj : 0] })), hollow: hid, lines,
       });
       const who = hid ? nm(vl, vj) : 'the network', act1 = net.acts[0];
       const at = { sigmoid: 'a sigmoid answers 0.5 there', tanh: 'a tanh answers 0 there', relu: 'a relu switches on there', step: 'a step flips there' }[act1];
@@ -465,10 +520,11 @@ window.NL = window.NL || {};
         `<p>Background: ${who}'s answer for every ${lv.names[0].join(' and ')}. ` +
         (hid ? 'Rings: the examples.' : 'Dots: the right answers.') +
         (lines ? (lines.length > 1 || L > 2 ? ` Dashed: where each neuron in the first hidden layer has Σ = 0${at ? ` (${at})` : ''}.` : ` Dashed: where Σ = 0${at ? ` (${at})` : ''}.`) : '') + '</p>';
-      if (L > 2) {
-        const opts = [['out', nm(L - 1, 0)]];
+      const outs = cur.names[L - 1];
+      if (L > 2 || outs.length > 1) {
+        const opts = outs.map((n, q) => ['o' + q, n]);
         for (let l = 1; l < L - 1; l++) cur.names[l].forEach((n, j) => opts.push([l + ',' + j, n]));
-        const on = hid ? cur.view.join(',') : 'out';
+        const on = hid ? cur.view.join(',') : 'o' + (cur.outK || 0);
         $('#picTabs').innerHTML = 'Show: ' + opts.map(([v, n]) =>
           `<button data-v="${v}" class="${on === v ? 'on' : ''}">${n}</button>`).join('');
       } else $('#picTabs').innerHTML = '';
@@ -610,13 +666,14 @@ window.NL = window.NL || {};
   // Has training reached the goal? (Checked after every step, so it doesn't redraw anything.)
   function passes() {
     const lv = cur.lv, tol = lv.tol || TOL, net = cur.net;
-    if (cur.won || (lv.needAct && cur.act !== lv.needAct)) return false;
-    const ok = ([x, t]) => Math.abs(net.forward(x)[0] - t) < tol;
-    return cur.tests.every(ok) && (!lv.exam || lv.exam.every(ok));
+    if (cur.won || !cur.tests.length || (lv.needAct && cur.act !== lv.needAct)) return false;
+    const ok = ([x, t]) => close(net.forward(x), t, tol);
+    return cur.tests.every(ok) && (!lv.exam || lv.sandbox || lv.exam.every(ok));
   }
 
   // Before training on, a rewound timeline drops the later steps.
   function cutHistory() {
+    cur.msgGood = '';
     if (cur.t < cur.hist.length - 1) {
       cur.hist.length = cur.t + 1;
       cur.errs.length = cur.t + 1;
@@ -627,6 +684,7 @@ window.NL = window.NL || {};
   }
 
   function trainStep(explain) {
+    if (!cur.tests.length) { cur.msg = 'There are no examples to learn from yet. Make some first!'; return 'stop'; }
     const { net, lv } = cur, k = cur.order[(cur.hist.length - 1) % cur.tests.length], [x, t] = cur.tests[k];
     const before = snapshot(), res = net.learn(x, t, cur.rate), after = snapshot();
     cur.hist.push(after);
@@ -708,8 +766,9 @@ window.NL = window.NL || {};
     tl.max = cur.hist.length - 1;
     if (document.activeElement !== tl || cur.running) tl.value = cur.t;
     $('#tlLabel').textContent = cur.t < cur.hist.length - 1 ? `⏪ step ${cur.t} of ${cur.hist.length - 1}` : `Step ${cur.t}`;
-    $('#trainMsg').textContent = cur.msg || (cur.t < cur.hist.length - 1 ? 'You are looking back in time. Press ▶ Train or Step to carry on from here; the later steps will be replaced.' : '');
-    $('#trainMsg').className = 'tmsg' + (cur.msg ? ' bad' : '');
+    const back = cur.t < cur.hist.length - 1;
+    $('#trainMsg').textContent = cur.msg || (back ? 'You are looking back in time. Press ▶ Train or Step to carry on from here; the later steps will be replaced.' : cur.msgGood || '');
+    $('#trainMsg').className = 'tmsg' + (cur.msg ? ' bad' : !back && cur.msgGood ? ' goodmsg' : '');
   }
 
   function renderCharts() {
@@ -734,12 +793,15 @@ window.NL = window.NL || {};
           : '<p class="dim">Press <b>Step</b> to show the network one example and see exactly how it nudges every number.</p>';
       return;
     }
-    const L = cur.net.sizes.length, out = e.res.out[0], miss = e.t - out, lr = e.rate;
-    const acts = cur.net.acts;
-    let h = `<h3>Step ${e.step}</h3>` +
-      `<p>Example: ${cur.names[0].map((n, i) => `${n} = ${fmt(e.x[i])}`).join(', ')} · right answer <b>${fmt(e.t)}</b></p>` +
-      `<p>The network guessed <b>${fmtn(out, 3)}</b>. miss = ${fmt(e.t)} − ${paren(out, 3)} = <b class="${cls(miss)}">${signed(miss, 3)}</b> ` +
-      (Math.abs(miss) < 5e-4 ? '(spot on: nothing to change)' : miss > 0 ? '(too low: push the answer up)' : '(too high: push the answer down)') + '</p>';
+    const L = cur.net.sizes.length, lr = e.rate, acts = cur.net.acts, T = tv(e.t), outs = cur.names[L - 1];
+    let h = `<h3>Step ${e.step}</h3><p>Example: ${cur.names[0].map((n, i) => `${n} = ${fmt(e.x[i])}`).join(', ')}</p>`;
+    // One line per output neuron: its guess, the right answer and the miss.
+    T.forEach((t, k) => {
+      const out = e.res.out[k], miss = t - out;
+      h += `<p>${outs.length > 1 ? `<b>${outs[k]}</b>: ` : ''}right answer <b>${fmt(t)}</b>. The network guessed <b>${fmtn(out, 3)}</b>. ` +
+        `miss = ${fmt(t)} − ${paren(out, 3)} = <b class="${cls(miss)}">${signed(miss, 3)}</b> ` +
+        (Math.abs(miss) < 5e-4 ? '(spot on: nothing to change)' : miss > 0 ? '(too low: push the answer up)' : '(too high: push the answer down)') + '</p>';
+    });
     const outAct = acts[L - 2];
     if (outAct === 'step') h += '<p class="bad">A step is flat, so its slope is 0, and every nudge below is 0. Nothing can change!</p>';
     h += '<table class="nudges"><thead><tr><th>number</th><th>nudge</th><th>new</th></tr></thead><tbody>';
@@ -751,7 +813,7 @@ window.NL = window.NL || {};
         const nexts = e.res.neurons.filter(o => o.l === r.l + 1);
         const parts = nexts.map(o => `${paren(o.blame, 3)} × ${fmtn(o.slope, 3)} × ${paren(e.before[cur.index[`${r.l + 1},${o.j},${r.j}`]], 3)}`);
         if (nexts.length === 1) {
-          const to = nm(r.l + 2, nexts[0].j), what = r.l + 2 === L - 1 ? 'miss' : `${to}'s blame`;
+          const to = nm(r.l + 2, nexts[0].j), what = r.l + 2 === L - 1 ? (outs.length > 1 ? `${to}'s miss` : 'miss') : `${to}'s blame`;
           h += `<tr class="sub"><td colspan="3">${who}'s share of the blame = ${what} × slope of ${to} × weight ${who}→${to} = ${parts[0]} = <b>${signed(r.blame, 4)}</b></td></tr>`;
         } else {
           h += `<tr class="sub"><td colspan="3">${who}'s share of the blame = add up, for each neuron it feeds, that neuron's blame × its slope × the weight between them = ` +
@@ -797,6 +859,12 @@ window.NL = window.NL || {};
   function complete() {
     stopTraining();
     cur.won = true;
+    if (cur.lv.sandbox) {
+      cur.msgGood = `🎉 Every example is right (within ${fmt(cur.lv.tol)}) after ${cur.t.toLocaleString()} steps!` +
+        (cur.lv.exam ? ` The exam: ${$('#examScore').textContent}.` : '') + ' Press ▶ Train to keep going.';
+      update();
+      return;
+    }
     const firstTime = !isDone(cur.lv.id);
     save.done[cur.lv.id] = true;
     if (cur.lab) {
@@ -859,15 +927,22 @@ window.NL = window.NL || {};
         cur.pick = n.dataset.n.split(',').map(Number);
         const L = cur.net.sizes.length;
         if (L > 2 && cur.pick[0] > 0 && cur.pick[0] < L - 1) cur.view = cur.pick.slice();
-        else if (L > 2 && cur.pick[0] === L - 1) cur.view = 'out';
+        else if (cur.pick[0] === L - 1) { cur.view = 'out'; cur.outK = cur.pick[1]; }
         update();
       }
+    });
+    $('#pic').addEventListener('click', ev => {
+      if (!cur || !cur.lv.dotsEdit || !cur.picMap) return;
+      const r = ev.target.getBoundingClientRect();
+      NL.Sandbox.dotClick(cur.picMap(ev.clientX - r.left, ev.clientY - r.top));
     });
     $('#picTabs').addEventListener('click', e => {
       const b = e.target.closest('[data-v]');
       if (!b) return;
-      cur.view = b.dataset.v === 'out' ? 'out' : b.dataset.v.split(',').map(Number);
-      cur.pick = cur.view === 'out' ? [cur.net.sizes.length - 1, 0] : cur.view.slice();
+      // 'o2' = output 2's answer; '1,3' = hidden neuron 3 of layer 1
+      const v = b.dataset.v;
+      if (v[0] === 'o') { cur.view = 'out'; cur.outK = +v.slice(1); } else cur.view = v.split(',').map(Number);
+      cur.pick = cur.view === 'out' ? [cur.net.sizes.length - 1, cur.outK || 0] : cur.view.slice();
       update();
     });
 
@@ -976,7 +1051,7 @@ window.NL = window.NL || {};
       $('#win').hidden = true;
       if (cur.lab) { window.scrollTo(0, 0); return; }
       const next = LEVELS.find(l => l.id === cur.lv.id + 1);
-      location.hash = next ? '#/level/' + next.id : '#/';
+      location.hash = !next ? '#/' : next.mode === 'sandbox' ? '#/sandbox' : '#/level/' + next.id;
     });
     $('#winStay').addEventListener('click', () => { $('#win').hidden = true; });
 
@@ -996,7 +1071,7 @@ window.NL = window.NL || {};
 
     $('#wipe').addEventListener('click', () => {
       if (!confirm('Forget all progress and start again from level 1?')) return;
-      save = { done: {}, params: {}, hints: {}, lab: freshLab(), tip1: false, digits: { mine: [] } };
+      save = { done: {}, params: {}, hints: {}, lab: freshLab(), tip1: false, digits: { mine: [] }, sandbox: { exps: [] } };
       store();
       showMap();
     });
@@ -1014,6 +1089,12 @@ window.NL = window.NL || {};
     });
   }
 
+  NL.Sandbox.init({
+    save: () => save, store,
+    openLevel: (lv, keep) => openLevel(lv, keep),
+    level: () => cur && cur.lv,
+    leaveLevel: () => { stopTraining(); NL.Digits.close(); cur = null; },
+  });
   wire();
   route();
 })(window.NL);
